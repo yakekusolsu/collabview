@@ -44,6 +44,27 @@ async function save() {
       </div>
 
       <div class="form-panel">
+        <h2>参加コード</h2>
+        <label for="signaling-url">シグナリングサーバーURL</label>
+        <input
+          id="signaling-url"
+          v-model="app.settings.signalingUrl"
+          placeholder="http://127.0.0.1:8787"
+        />
+        <label for="host-address">配信者LANアドレス</label>
+        <input id="host-address" v-model="app.settings.hostAddress" placeholder="192.168.0.10" />
+        <label for="host-port">手動接続用ポート</label>
+        <input
+          id="host-port"
+          v-model.number="app.settings.hostPort"
+          type="number"
+          min="1"
+          max="65535"
+        />
+        <p class="hint">参加コードには、選択中の参加者用SRTポートとこのLANアドレスを登録します。</p>
+      </div>
+
+      <div class="form-panel">
         <h2>macOS権限</h2>
         <p>
           システム設定 → プライバシーとセキュリティ → 画面収録とシステムオーディオ録音 →

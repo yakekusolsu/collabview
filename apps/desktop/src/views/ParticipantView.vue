@@ -7,12 +7,15 @@ import StatusBadge from "@/components/StatusBadge.vue";
 import MetricStrip from "@/components/MetricStrip.vue";
 import { useAppStore } from "@/stores/appStore";
 import { tauriApi } from "@/services/tauri";
+import { joinRoomCode } from "@/services/signaling";
 
 const app = useAppStore();
 const selectedSourceId = ref("");
 const state = ref<"idle" | "connecting" | "connected" | "failed" | "stopped">("idle");
 const ffmpegArgs = ref<string[]>([]);
 const error = ref("");
+const joinCode = ref("");
+const joinMessage = ref("");
 const previewFramePath = ref("");
 const previewFrameSrc = computed(() =>
   previewFramePath.value ? convertFileSrc(previewFramePath.value) : ""
@@ -59,6 +62,24 @@ async function startSending() {
   }
 }
 
+async function resolveJoinCode() {
+  error.value = "";
+  joinMessage.value = "";
+  try {
+    const result = await joinRoomCode({
+      signalingUrl: app.settings.signalingUrl,
+      roomCode: joinCode.value,
+      displayName: app.settings.displayName || "Player"
+    });
+    app.settings.hostAddress = result.hostAddress;
+    app.settings.hostPort = result.hostPort;
+    await app.save();
+    joinMessage.value = `接続先を取得しました: ${result.hostAddress}:${result.hostPort}`;
+  } catch (caught) {
+    error.value = caught instanceof Error ? caught.message : "参加コードの解決に失敗しました。";
+  }
+}
+
 async function stopSending() {
   await tauriApi.stopManagedProcess("participant-sender");
   state.value = "stopped";
@@ -96,10 +117,22 @@ async function capturePreviewFrame() {
 
     <section class="participant-grid">
       <div class="form-panel">
-        <label for="room">配信者IPまたはホスト</label>
+        <label for="join-code">参加コード</label>
+        <div class="inline-fields">
+          <input id="join-code" v-model="joinCode" maxlength="6" placeholder="ABC234" />
+          <button class="secondary-button" type="button" @click="resolveJoinCode">
+            接続先を取得
+          </button>
+        </div>
+        <p class="hint">
+          シグナリングURL: {{ app.settings.signalingUrl }}。設定画面で変更できます。
+        </p>
+        <p v-if="joinMessage" class="success-text">{{ joinMessage }}</p>
+
+        <label for="room">手動接続: 配信者IPまたはホスト</label>
         <input id="room" v-model="app.settings.hostAddress" placeholder="192.168.0.10" />
 
-        <label for="port">ポート</label>
+        <label for="port">手動接続: ポート</label>
         <input id="port" v-model.number="app.settings.hostPort" type="number" min="1" max="65535" />
 
         <label for="name">表示名</label>

@@ -7,6 +7,7 @@ import MetricStrip from "@/components/MetricStrip.vue";
 import { tauriApi } from "@/services/tauri";
 import { useAppStore } from "@/stores/appStore";
 import { useObsStore } from "@/stores/obsStore";
+import { createRoomCode } from "@/services/signaling";
 import {
   registerCollabViewShortcuts,
   type ShortcutAction,
@@ -15,11 +16,13 @@ import {
 
 const app = useAppStore();
 const obs = useObsStore();
-const roomCode = ref("LAN001");
+const roomCode = ref("");
 const selectedScene = ref("");
 const relayError = ref("");
 const setupMessage = ref("");
 const shortcutMessage = ref("");
+const roomCodeMessage = ref("");
+const roomCodeError = ref("");
 const previewTick = ref(Date.now());
 let previewTimer: ReturnType<typeof globalThis.setInterval> | undefined;
 
@@ -114,6 +117,29 @@ async function startRelay() {
   }
 }
 
+async function createJoinCode() {
+  if (!participant.value) {
+    app.addLocalParticipant();
+  }
+  const target = participant.value;
+  if (!target) return;
+  roomCodeError.value = "";
+  roomCodeMessage.value = "";
+  try {
+    const result = await createRoomCode({
+      signalingUrl: app.settings.signalingUrl,
+      hostAddress: app.settings.hostAddress,
+      hostPort: target.port
+    });
+    roomCode.value = result.roomCode;
+    roomCodeMessage.value = "参加者にはこのコードとシグナリングURLを伝えてください。";
+    await app.save();
+  } catch (error) {
+    roomCodeError.value =
+      error instanceof Error ? error.message : "参加コードの発行に失敗しました。";
+  }
+}
+
 async function stopRelay() {
   if (!participant.value?.relayProcessId) return;
   const processId = participant.value.relayProcessId;
@@ -174,11 +200,17 @@ async function setupObsScenes() {
       <section class="panel-block">
         <label>ルームコード</label>
         <div class="room-code">
-          {{ roomCode }}
+          {{ roomCode || "未発行" }}
         </div>
+        <button class="secondary-button full" type="button" @click="createJoinCode">
+          参加コードを発行
+        </button>
         <p class="hint">
-          v0.1.0はLAN内接続を優先します。参加者にはホストIPとポートを共有してください。
+          参加者はコードで接続先を取得できます。シグナリングURL:
+          {{ app.settings.signalingUrl }}
         </p>
+        <p v-if="roomCodeMessage" class="hint">{{ roomCodeMessage }}</p>
+        <p v-if="roomCodeError" class="error-text">{{ roomCodeError }}</p>
       </section>
 
       <section class="panel-block">

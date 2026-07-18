@@ -18,6 +18,8 @@ pub struct AppSettings {
     pub selected_quality_id: String,
     pub host_address: String,
     pub host_port: u16,
+    #[serde(default = "default_signaling_url")]
+    pub signaling_url: String,
     pub auto_quality: bool,
     pub audio_mode: String,
     #[serde(default = "ShortcutSettings::default")]
@@ -38,11 +40,16 @@ impl Default for AppSettings {
             selected_quality_id: "standard".to_string(),
             host_address: "127.0.0.1".to_string(),
             host_port: 12000,
+            signaling_url: default_signaling_url(),
             auto_quality: true,
             audio_mode: "none".to_string(),
             shortcuts: ShortcutSettings::default(),
         }
     }
+}
+
+fn default_signaling_url() -> String {
+    "http://127.0.0.1:8787".to_string()
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]

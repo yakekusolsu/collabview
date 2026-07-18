@@ -17,6 +17,7 @@ export interface AppSettings {
   selectedQualityId: QualityPreset["id"];
   hostAddress: string;
   hostPort: number;
+  signalingUrl: string;
   autoQuality: boolean;
   audioMode: "none" | "game" | "system" | "microphone";
   shortcuts: ShortcutSettings;

@@ -12,6 +12,16 @@ export const joinRoomSchema = z.object({
   displayName: z.string().trim().min(1).max(DISPLAY_NAME_MAX_LENGTH)
 });
 
+export const createRoomSchema = z.object({
+  hostAddress: z.string().trim().min(1).max(255).optional(),
+  hostPort: z.number().int().min(1).max(65535)
+});
+
+export interface HostEndpoint {
+  hostAddress: string;
+  hostPort: number;
+}
+
 export interface RoomParticipant {
   id: string;
   displayName: string;
@@ -22,6 +32,7 @@ export interface RoomParticipant {
 export interface Room {
   code: string;
   hostToken: string;
+  hostEndpoint: HostEndpoint;
   expiresAt: number;
   participants: Map<string, RoomParticipant>;
 }
@@ -30,8 +41,9 @@ export class RoomRegistry {
   private readonly rooms = new Map<string, Room>();
   private readonly attempts = new Map<string, number[]>();
 
-  createRoom(now = Date.now()): Room {
+  createRoom(input: unknown, remoteAddress: string, now = Date.now()): Room {
     this.cleanup(now);
+    const parsed = createRoomSchema.parse(input);
     let code = roomCode();
     while (this.rooms.has(code)) {
       code = roomCode();
@@ -39,6 +51,10 @@ export class RoomRegistry {
     const room: Room = {
       code,
       hostToken: token(),
+      hostEndpoint: {
+        hostAddress: parsed.hostAddress ?? normalizeRemoteAddress(remoteAddress),
+        hostPort: parsed.hostPort
+      },
       expiresAt: now + ROOM_TTL_MS,
       participants: new Map()
     };
@@ -69,6 +85,13 @@ export class RoomRegistry {
     return participant;
   }
 
+  getRoomEndpoint(roomCode: string, now = Date.now()): HostEndpoint {
+    this.cleanup(now);
+    const room = this.rooms.get(roomCode);
+    if (!room) throw new Error("room_not_found");
+    return room.hostEndpoint;
+  }
+
   cleanup(now = Date.now()): void {
     for (const [code, room] of this.rooms.entries()) {
       if (room.expiresAt <= now) this.rooms.delete(code);
@@ -85,4 +108,10 @@ export class RoomRegistry {
     attempts.push(now);
     this.attempts.set(remoteAddress, attempts);
   }
+}
+
+function normalizeRemoteAddress(remoteAddress: string): string {
+  if (remoteAddress.startsWith("::ffff:")) return remoteAddress.replace("::ffff:", "");
+  if (remoteAddress === "::1") return "127.0.0.1";
+  return remoteAddress;
 }

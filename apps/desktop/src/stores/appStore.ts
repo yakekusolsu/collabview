@@ -15,6 +15,7 @@ const defaultSettings: AppSettings = {
   selectedQualityId: "standard",
   hostAddress: "127.0.0.1",
   hostPort: 12000,
+  signalingUrl: "http://127.0.0.1:8787",
   autoQuality: true,
   audioMode: "none",
   shortcuts: {
