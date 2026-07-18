@@ -1,10 +1,14 @@
 use crate::{
     error::{AppError, AppResult},
     models::{CaptureFrameRequest, CaptureFrameResult, CaptureSource},
-    services::sidecar,
 };
+
+#[cfg(target_os = "macos")]
+use crate::services::sidecar;
+#[cfg(target_os = "macos")]
 use std::{env, path::PathBuf, process::Command};
 
+#[cfg(target_os = "macos")]
 pub fn list_capture_sources() -> AppResult<Vec<CaptureSource>> {
     let helper = sidecar::resolve_sidecar("collabview-capture-helper")
         .map_err(|error| AppError::CaptureHelperStart(error.to_string()))?;
@@ -21,6 +25,14 @@ pub fn list_capture_sources() -> AppResult<Vec<CaptureSource>> {
         .map_err(|error| AppError::CaptureHelperResponse(error.to_string()))
 }
 
+#[cfg(not(target_os = "macos"))]
+pub fn list_capture_sources() -> AppResult<Vec<CaptureSource>> {
+    Err(AppError::CaptureHelperStart(
+        "画面/ウィンドウ列挙は現在macOS版のみ対応です。Windows版はOBS操作とSRT受信/再出力から対応します。".to_string(),
+    ))
+}
+
+#[cfg(target_os = "macos")]
 pub fn capture_frame(request: CaptureFrameRequest) -> AppResult<CaptureFrameResult> {
     validate_frame_request(&request)?;
     let helper = sidecar::resolve_sidecar("collabview-capture-helper")
@@ -69,6 +81,15 @@ pub fn capture_frame(request: CaptureFrameRequest) -> AppResult<CaptureFrameResu
         .map_err(|error| AppError::CaptureHelperResponse(error.to_string()))
 }
 
+#[cfg(not(target_os = "macos"))]
+pub fn capture_frame(_request: CaptureFrameRequest) -> AppResult<CaptureFrameResult> {
+    Err(AppError::CaptureFrame(
+        "画面プレビュー取得は現在macOS版のみ対応です。Windows版の画面キャプチャは今後Windows Graphics Captureで実装します。"
+            .to_string(),
+    ))
+}
+
+#[cfg(target_os = "macos")]
 fn validate_frame_request(request: &CaptureFrameRequest) -> AppResult<()> {
     if !(64..=7680).contains(&request.width) || !(64..=4320).contains(&request.height) {
         return Err(AppError::CaptureFrame(
@@ -88,12 +109,14 @@ fn validate_frame_request(request: &CaptureFrameRequest) -> AppResult<()> {
     Ok(())
 }
 
+#[cfg(target_os = "macos")]
 fn frame_output_path() -> AppResult<PathBuf> {
     let dir = env::temp_dir().join("CollabView").join("frames");
     std::fs::create_dir_all(&dir).map_err(|error| AppError::CaptureFrame(error.to_string()))?;
     Ok(dir.join(format!("frame-{}.png", timestamp_millis())))
 }
 
+#[cfg(target_os = "macos")]
 fn timestamp_millis() -> u128 {
     std::time::SystemTime::now()
         .duration_since(std::time::UNIX_EPOCH)
@@ -101,6 +124,7 @@ fn timestamp_millis() -> u128 {
         .unwrap_or_default()
 }
 
+#[cfg(target_os = "macos")]
 fn stderr_text(stderr: &[u8]) -> String {
     String::from_utf8_lossy(stderr).trim().to_string()
 }

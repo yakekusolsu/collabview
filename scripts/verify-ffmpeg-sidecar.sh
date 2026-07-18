@@ -12,6 +12,11 @@ PROTOCOLS="$("$FFMPEG" -hide_banner -protocols)"
 ENCODERS="$("$FFMPEG" -hide_banner -encoders)"
 DECODERS="$("$FFMPEG" -hide_banner -decoders)"
 INDEVS="$("$FFMPEG" -hide_banner -devices)"
+REQUIRED_ENCODER="h264_videotoolbox"
+
+if [[ "$FFMPEG" == *windows* || "$FFMPEG" == *.exe ]]; then
+  REQUIRED_ENCODER="libx264"
+fi
 
 echo "$VERSION" | head -n 1
 
@@ -20,8 +25,8 @@ if ! grep -Eq '(^|[[:space:]])srt($|[[:space:]])' <<<"$PROTOCOLS"; then
   exit 1
 fi
 
-if ! grep -q 'h264_videotoolbox' <<<"$ENCODERS"; then
-  echo "FFmpeg sidecar does not expose h264_videotoolbox." >&2
+if ! grep -q "$REQUIRED_ENCODER" <<<"$ENCODERS"; then
+  echo "FFmpeg sidecar does not expose $REQUIRED_ENCODER." >&2
   exit 1
 fi
 
@@ -40,4 +45,4 @@ if ! grep -q 'lavfi' <<<"$INDEVS"; then
   exit 1
 fi
 
-echo "FFmpeg sidecar supports SRT, h264_videotoolbox, H.264 preview decode, and lavfi loopback tests."
+echo "FFmpeg sidecar supports SRT, $REQUIRED_ENCODER, H.264 preview decode, and lavfi loopback tests."

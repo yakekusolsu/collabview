@@ -38,6 +38,7 @@ v0.1.0の土台として、次を実装しています。
 - macOS 12.3以降
 - Apple Silicon Macを優先
 - Intel Macはv0.2.0以降で検証予定
+- Windows 10/11 x64は`.exe`インストーラー生成に対応予定
 - Node.js 24
 - pnpm 11
 - Rust stable
@@ -45,6 +46,8 @@ v0.1.0の土台として、次を実装しています。
 - SRT対応FFmpeg
 
 ScreenCaptureKitはmacOS 12.3以降が必要です。Tauri自体はより古いmacOSも対象にできますが、CollabViewは画面共有要件に合わせて12.3以上を最低対応にします。
+
+Windows版のv0.1.xでは、OBS操作、SRT受信/OBS向け再出力、設定UI、ログ、同梱FFmpeg sidecarのビルド導線を優先します。参加者側のWindows画面/ウィンドウキャプチャは、ScreenCaptureKitではなくWindows Graphics CaptureまたはFFmpeg `gdigrab`/`ddagrab`を検証してから有効化します。
 
 ## OBS Studioの設定
 
@@ -168,6 +171,18 @@ pnpm tauri dev
 pnpm tauri build
 ```
 
+Windows NSIS `.exe`インストーラー:
+
+```powershell
+pnpm install
+choco install ffmpeg -y
+$env:COLLABVIEW_TARGET_TRIPLE="x86_64-pc-windows-msvc"
+$env:COLLABVIEW_WINDOWS_FFMPEG_PATH="C:\ProgramData\chocolatey\lib\ffmpeg\tools\ffmpeg\bin\ffmpeg.exe"
+pnpm tauri:build:windows
+```
+
+生成物は`target/release/bundle/nsis/`に出力されます。FFmpegをChocolatey以外で用意する場合は、`COLLABVIEW_WINDOWS_FFMPEG_PATH`に`ffmpeg.exe`の絶対パスを指定してください。
+
 PKG作成:
 
 ```bash
@@ -267,6 +282,8 @@ v0.2.0:
 
 - 4参加者
 - 1080p60
+- Windows x64 `.exe`配布の実機検証
+- Windows画面キャプチャ方式の選定
 - OBSシーン自動作成
 - 2分割/4分割
 - グローバルショートカット
