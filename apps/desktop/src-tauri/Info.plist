@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "https://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+  <key>NSScreenCaptureUsageDescription</key>
+  <string>CollabViewがゲーム画面を共有するには、macOSの画面収録権限が必要です。</string>
+  <key>NSMicrophoneUsageDescription</key>
+  <string>参加者が明示的にマイク音声送信を有効にした場合にのみ使用します。</string>
+  <key>NSLocalNetworkUsageDescription</key>
+  <string>同じLAN内の配信者または参加者へ映像を送受信するために使用します。</string>
+</dict>
+</plist>

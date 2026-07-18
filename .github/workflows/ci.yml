@@ -1,0 +1,103 @@
+name: ci
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+    tags: ["v*"]
+
+jobs:
+  lint-test:
+    runs-on: macos-14
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 11.9.0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: pnpm
+          cache-dependency-path: collabview/pnpm-lock.yaml
+      - uses: dtolnay/rust-toolchain@stable
+      - run: brew install pkg-config srt openssl@3
+      - run: pnpm install --frozen-lockfile
+        working-directory: collabview
+      - run: pnpm lint
+        working-directory: collabview
+      - run: pnpm typecheck
+        working-directory: collabview
+      - run: pnpm test
+        working-directory: collabview
+      - run: cargo fmt --all --check
+        working-directory: collabview
+      - run: cargo clippy --workspace --all-targets -- -D warnings
+        working-directory: collabview
+
+  macos-build:
+    runs-on: macos-14
+    needs: lint-test
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 11.9.0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: pnpm
+          cache-dependency-path: collabview/pnpm-lock.yaml
+      - uses: dtolnay/rust-toolchain@stable
+      - run: brew install pkg-config srt openssl@3
+      - run: pnpm install --frozen-lockfile
+        working-directory: collabview
+      - run: scripts/import-apple-certificate.sh
+        working-directory: collabview
+        env:
+          APPLE_CERTIFICATE: ${{ secrets.APPLE_CERTIFICATE }}
+          APPLE_CERTIFICATE_PASSWORD: ${{ secrets.APPLE_CERTIFICATE_PASSWORD }}
+          KEYCHAIN_PASSWORD: ${{ secrets.KEYCHAIN_PASSWORD }}
+      - run: pnpm tauri build
+        working-directory: collabview
+        env:
+          APPLE_CERTIFICATE: ${{ secrets.APPLE_CERTIFICATE }}
+          APPLE_CERTIFICATE_PASSWORD: ${{ secrets.APPLE_CERTIFICATE_PASSWORD }}
+          APPLE_SIGNING_IDENTITY: ${{ secrets.APPLE_SIGNING_IDENTITY }}
+          APPLE_ID: ${{ secrets.APPLE_ID }}
+          APPLE_PASSWORD: ${{ secrets.APPLE_PASSWORD }}
+          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+          APPLE_API_KEY: ${{ secrets.APPLE_API_KEY }}
+          APPLE_API_ISSUER: ${{ secrets.APPLE_API_ISSUER }}
+          APPLE_API_KEY_PATH: ${{ secrets.APPLE_API_KEY_PATH }}
+      - run: scripts/build-pkg.sh
+        working-directory: collabview
+        env:
+          APPLE_INSTALLER_SIGNING_IDENTITY: ${{ secrets.APPLE_INSTALLER_SIGNING_IDENTITY }}
+          APPLE_ID: ${{ secrets.APPLE_ID }}
+          APPLE_PASSWORD: ${{ secrets.APPLE_PASSWORD }}
+          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+          APPLE_API_KEY: ${{ secrets.APPLE_API_KEY }}
+          APPLE_API_ISSUER: ${{ secrets.APPLE_API_ISSUER }}
+          APPLE_API_KEY_PATH: ${{ secrets.APPLE_API_KEY_PATH }}
+          COLLABVIEW_NOTARIZE_PKG: ${{ secrets.APPLE_INSTALLER_SIGNING_IDENTITY != '' && '1' || '0' }}
+      - uses: actions/upload-artifact@v4
+        with:
+          name: CollabView-macos
+          path: |
+            collabview/target/release/bundle/**/*.dmg
+            collabview/target/release/bundle/**/*.pkg
+
+  release:
+    if: startsWith(github.ref, 'refs/tags/v')
+    runs-on: ubuntu-latest
+    needs: macos-build
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: CollabView-macos
+          path: dist
+      - uses: softprops/action-gh-release@v2
+        with:
+          files: dist/**/*

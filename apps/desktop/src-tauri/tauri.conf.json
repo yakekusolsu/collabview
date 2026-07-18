@@ -1,0 +1,50 @@
+{
+  "$schema": "https://schema.tauri.app/config/2",
+  "productName": "CollabView",
+  "version": "0.1.0",
+  "identifier": "app.collabview.desktop",
+  "build": {
+    "beforeDevCommand": "pnpm -w prepare:sidecars && pnpm dev",
+    "beforeBuildCommand": "pnpm -w prepare:sidecars && pnpm build",
+    "devUrl": "http://127.0.0.1:1420",
+    "frontendDist": "../dist"
+  },
+  "app": {
+    "windows": [
+      {
+        "title": "CollabView",
+        "width": 1280,
+        "height": 820,
+        "minWidth": 960,
+        "minHeight": 720,
+        "resizable": true
+      }
+    ],
+    "security": {
+      "csp": "default-src 'self'; connect-src 'self' ws://127.0.0.1:* http://127.0.0.1:*; img-src 'self' asset: data:; media-src 'self' blob: asset:; style-src 'self' 'unsafe-inline'"
+    }
+  },
+  "bundle": {
+    "active": true,
+    "targets": ["app", "dmg"],
+    "icon": [
+      "icons/32x32.png",
+      "icons/128x128.png",
+      "icons/128x128@2x.png",
+      "icons/icon.icns",
+      "icons/icon.png"
+    ],
+    "externalBin": ["binaries/collabview-capture-helper", "binaries/ffmpeg"],
+    "resources": {
+      "Resources/ffmpeg-libs-aarch64-apple-darwin": "ffmpeg-libs-aarch64-apple-darwin"
+    },
+    "category": "Video",
+    "shortDescription": "Low-latency collaborative game viewpoint sharing for OBS",
+    "longDescription": "CollabView receives low-latency game viewpoints from collaborators and controls OBS Studio scenes.",
+    "macOS": {
+      "minimumSystemVersion": "12.3",
+      "hardenedRuntime": true,
+      "entitlements": "./Entitlements.plist"
+    }
+  }
+}

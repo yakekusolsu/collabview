@@ -1,0 +1,408 @@
+:root {
+  color: #eef3f8;
+  background: #101418;
+  font-family:
+    Inter,
+    ui-sans-serif,
+    system-ui,
+    -apple-system,
+    BlinkMacSystemFont,
+    "Segoe UI",
+    sans-serif;
+  letter-spacing: 0;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  min-width: 960px;
+  min-height: 720px;
+  background: #101418;
+}
+
+button,
+input,
+select {
+  font: inherit;
+}
+
+button {
+  cursor: pointer;
+}
+
+label {
+  color: #aeb8c5;
+  display: block;
+  font-size: 0.86rem;
+  margin: 14px 0 6px;
+}
+
+input,
+select {
+  width: 100%;
+  border: 1px solid #31404d;
+  border-radius: 6px;
+  background: #151c23;
+  color: #eef3f8;
+  padding: 10px 12px;
+}
+
+h1,
+h2,
+h3,
+p {
+  margin-top: 0;
+}
+
+.start-shell,
+.settings-shell,
+.participant-shell {
+  min-height: 100vh;
+  padding: 28px;
+}
+
+.start-shell {
+  display: grid;
+  place-items: center;
+}
+
+.start-hero {
+  width: min(720px, 100%);
+  text-align: center;
+}
+
+.logo-mark {
+  width: 88px;
+  height: 88px;
+  border-radius: 8px;
+  margin: 0 auto 18px;
+  display: grid;
+  place-items: center;
+  background: #21a67a;
+  color: #07100d;
+  font-size: 2rem;
+  font-weight: 800;
+}
+
+.start-hero h1 {
+  font-size: 3.8rem;
+  margin-bottom: 12px;
+}
+
+.start-hero p {
+  color: #c8d2dc;
+  font-size: 1.1rem;
+}
+
+.start-actions {
+  display: grid;
+  gap: 12px;
+  margin-top: 32px;
+}
+
+.primary-button,
+.secondary-button,
+.ghost-button,
+.scene-button,
+.small-button,
+.danger-button,
+.link-button {
+  border: 0;
+  border-radius: 6px;
+  min-height: 42px;
+  padding: 10px 16px;
+  color: #f8fbff;
+}
+
+.primary-button {
+  background: #21a67a;
+  color: #06100d;
+  font-weight: 700;
+}
+
+.secondary-button {
+  background: #263542;
+}
+
+.ghost-button,
+.link-button {
+  background: transparent;
+  border: 1px solid #31404d;
+}
+
+.small-button {
+  background: #263542;
+  min-height: 32px;
+  padding: 5px 10px;
+}
+
+.danger-button {
+  width: 100%;
+  background: #be3b46;
+  font-weight: 700;
+}
+
+.full {
+  width: 100%;
+}
+
+.app-footer {
+  position: fixed;
+  bottom: 22px;
+  display: flex;
+  gap: 18px;
+  align-items: center;
+  color: #8f9ba8;
+}
+
+.workspace {
+  min-height: 100vh;
+  display: grid;
+  grid-template-columns: 280px minmax(420px, 1fr) 280px;
+  gap: 18px;
+  padding: 18px;
+}
+
+.side-panel,
+.control-panel,
+.form-panel {
+  background: #151c23;
+  border: 1px solid #263542;
+  border-radius: 8px;
+  padding: 18px;
+}
+
+.panel-block {
+  border-top: 1px solid #263542;
+  padding-top: 16px;
+  margin-top: 16px;
+}
+
+.row-between,
+.top-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.button-row {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.room-code {
+  font-size: 2rem;
+  font-weight: 800;
+  letter-spacing: 0;
+}
+
+.hint {
+  color: #8f9ba8;
+  font-size: 0.9rem;
+  line-height: 1.5;
+}
+
+.error-text {
+  color: #ffb4bd;
+}
+
+.success-text {
+  color: #8ee4bf;
+}
+
+.participant-row,
+.scene-button {
+  width: 100%;
+  min-height: 52px;
+  margin-top: 8px;
+  background: #1b2530;
+  border: 1px solid #31404d;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.participant-row.selected,
+.scene-button:hover,
+.quality-option.selected {
+  border-color: #21a67a;
+}
+
+.preview-area {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.preview-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.preview-header p {
+  color: #8f9ba8;
+  margin-bottom: 0;
+}
+
+.video-placeholder {
+  min-height: 420px;
+  border-radius: 8px;
+  border: 1px solid #31404d;
+  background:
+    linear-gradient(90deg, rgba(255, 255, 255, 0.04) 1px, transparent 1px),
+    linear-gradient(rgba(255, 255, 255, 0.04) 1px, transparent 1px), #0b0f13;
+  background-size: 32px 32px;
+  display: grid;
+  place-items: center;
+  text-align: center;
+  color: #e7edf3;
+}
+
+.preview-frame {
+  width: 100%;
+  min-height: 420px;
+  max-height: 520px;
+  border-radius: 8px;
+  border: 1px solid #31404d;
+  object-fit: contain;
+  background: #0b0f13;
+}
+
+.video-placeholder span {
+  display: block;
+  font-size: 2rem;
+  font-weight: 800;
+}
+
+.video-placeholder small {
+  color: #8f9ba8;
+  display: block;
+  margin-top: 8px;
+}
+
+.metric-strip {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.metric-strip div {
+  background: #151c23;
+  border: 1px solid #263542;
+  border-radius: 8px;
+  padding: 12px;
+}
+
+.metric-strip strong,
+.metric-strip span {
+  display: block;
+}
+
+.metric-strip span {
+  color: #8f9ba8;
+  font-size: 0.78rem;
+}
+
+.status {
+  border-radius: 999px;
+  padding: 4px 10px;
+  font-size: 0.78rem;
+  border: 1px solid transparent;
+}
+
+.status-connected {
+  background: #123d31;
+  border-color: #21a67a;
+}
+
+.status-failed {
+  background: #4d1b22;
+  border-color: #be3b46;
+}
+
+.status-degraded,
+.status-reconnecting,
+.status-connecting {
+  background: #4a3a12;
+  border-color: #d49b2a;
+}
+
+.status-idle,
+.status-stopped {
+  background: #202a33;
+  border-color: #3b4c5d;
+}
+
+.participant-grid,
+.settings-grid {
+  display: grid;
+  grid-template-columns: 320px minmax(420px, 1fr) 320px;
+  gap: 18px;
+  margin-top: 20px;
+}
+
+.settings-grid {
+  grid-template-columns: repeat(2, minmax(320px, 1fr));
+}
+
+.quality-grid {
+  display: grid;
+  gap: 8px;
+}
+
+.quality-option {
+  text-align: left;
+  border: 1px solid #31404d;
+  background: #1b2530;
+  color: #eef3f8;
+  border-radius: 6px;
+  padding: 10px;
+}
+
+.quality-option span,
+.quality-option strong {
+  display: block;
+}
+
+.quality-option span {
+  color: #8f9ba8;
+  font-size: 0.82rem;
+}
+
+.notice {
+  margin: 16px 0;
+  padding: 12px;
+  border-radius: 6px;
+  background: #23313d;
+  color: #d6e0ea;
+  line-height: 1.5;
+}
+
+.check-row {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+}
+
+.check-row input {
+  width: auto;
+}
+
+.back-link {
+  color: #8ee4bf;
+  text-decoration: none;
+}
+
+pre {
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  color: #c8d2dc;
+}

@@ -1,0 +1,17 @@
+node_modules/
+dist/
+target/
+.build/
+ffbuild/
+test-results/
+.DS_Store
+*.log
+*.local
+*.tsbuildinfo
+*.pem
+*.p12
+apps/desktop/src-tauri/gen/schemas/
+apps/desktop/src-tauri/binaries/ffmpeg*
+apps/desktop/src-tauri/binaries/ffprobe*
+apps/desktop/src-tauri/binaries/collabview-capture-helper*
+apps/desktop/src-tauri/Resources/ffmpeg-libs-*

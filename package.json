@@ -1,0 +1,31 @@
+{
+  "name": "collabview",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "packageManager": "pnpm@11.9.0",
+  "scripts": {
+    "dev": "pnpm --filter @collabview/desktop dev",
+    "tauri": "pnpm --filter @collabview/desktop tauri",
+    "build": "pnpm --filter @collabview/desktop build",
+    "lint": "pnpm --filter @collabview/desktop lint && pnpm --filter @collabview/signaling-server lint",
+    "typecheck": "pnpm --filter @collabview/desktop typecheck && pnpm --filter @collabview/signaling-server typecheck",
+    "test": "pnpm --filter @collabview/desktop test && pnpm --filter @collabview/signaling-server test",
+    "format": "pnpm --filter @collabview/desktop format",
+    "prepare:sidecars": "scripts/prepare-sidecars.sh",
+    "verify:ffmpeg": "scripts/verify-ffmpeg-sidecar.sh apps/desktop/src-tauri/binaries/ffmpeg-aarch64-apple-darwin",
+    "test:srt-loopback": "scripts/test-srt-loopback.sh",
+    "pkg:mac": "scripts/build-pkg.sh",
+    "notarize:mac": "scripts/notarize-release-artifacts.sh"
+  },
+  "devDependencies": {
+    "@eslint/js": "^9.31.0",
+    "@types/node": "^24.0.15",
+    "eslint": "^9.31.0",
+    "eslint-plugin-vue": "^10.3.0",
+    "vue-eslint-parser": "^10.2.0",
+    "prettier": "^3.6.2",
+    "typescript": "^5.8.3",
+    "typescript-eslint": "^8.37.0"
+  }
+}
