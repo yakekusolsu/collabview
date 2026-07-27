@@ -8,6 +8,7 @@ on:
 
 jobs:
   lint-test:
+    if: ${{ !startsWith(github.ref, 'refs/tags/v') }}
     runs-on: macos-14
     steps:
       - uses: actions/checkout@v4
@@ -29,8 +30,8 @@ jobs:
       - run: cargo clippy --workspace --all-targets -- -D warnings
 
   macos-build:
+    if: startsWith(github.ref, 'refs/tags/v')
     runs-on: macos-14
-    needs: lint-test
     steps:
       - uses: actions/checkout@v4
       - uses: pnpm/action-setup@v4
@@ -44,12 +45,15 @@ jobs:
       - uses: dtolnay/rust-toolchain@stable
       - run: brew install pkg-config srt openssl@3
       - run: pnpm install --frozen-lockfile
+      - run: pnpm -w prepare:sidecars
+      - run: node node_modules/vite/bin/vite.js build
+        working-directory: apps/desktop
       - run: scripts/import-apple-certificate.sh
         env:
           APPLE_CERTIFICATE: ${{ secrets.APPLE_CERTIFICATE }}
           APPLE_CERTIFICATE_PASSWORD: ${{ secrets.APPLE_CERTIFICATE_PASSWORD }}
           KEYCHAIN_PASSWORD: ${{ secrets.KEYCHAIN_PASSWORD }}
-      - run: pnpm tauri build
+      - run: pnpm --filter @collabview/desktop tauri build --config '{"build":{"beforeBuildCommand":""}}' --ci
         env:
           APPLE_CERTIFICATE: ${{ secrets.APPLE_CERTIFICATE }}
           APPLE_CERTIFICATE_PASSWORD: ${{ secrets.APPLE_CERTIFICATE_PASSWORD }}
@@ -78,8 +82,8 @@ jobs:
             target/release/bundle/**/*.pkg
 
   windows-build:
+    if: startsWith(github.ref, 'refs/tags/v')
     runs-on: windows-2022
-    needs: lint-test
     steps:
       - uses: actions/checkout@v4
       - uses: pnpm/action-setup@v4
@@ -93,10 +97,15 @@ jobs:
       - uses: dtolnay/rust-toolchain@stable
       - run: choco install ffmpeg -y
       - run: pnpm install --frozen-lockfile
-      - run: pnpm tauri:build:windows
+      - run: pnpm -w prepare:sidecars
         env:
           COLLABVIEW_TARGET_TRIPLE: x86_64-pc-windows-msvc
           COLLABVIEW_WINDOWS_FFMPEG_PATH: C:\ProgramData\chocolatey\lib\ffmpeg\tools\ffmpeg\bin\ffmpeg.exe
+      - run: node node_modules/vite/bin/vite.js build
+        working-directory: apps/desktop
+      - run: pnpm --filter @collabview/desktop tauri build --config src-tauri/tauri.windows.conf.json --config '{"build":{"beforeBuildCommand":""}}' --ci
+        env:
+          COLLABVIEW_TARGET_TRIPLE: x86_64-pc-windows-msvc
       - uses: actions/upload-artifact@v4
         with:
           name: CollabView-windows
