@@ -11,8 +11,8 @@ use std::{fs, path::PathBuf, process::Stdio};
 use tauri::State;
 use tokio::{
     io::{AsyncBufReadExt, BufReader},
-    process::Command,
-    time::{timeout, Duration},
+    process::{Child, Command},
+    time::{sleep, timeout, Duration},
 };
 
 pub async fn start_ffmpeg(
@@ -35,16 +35,7 @@ pub async fn start_ffmpeg(
         args.len()
     ));
 
-    let ffmpeg_path = sidecar::resolve_sidecar("ffmpeg")?;
-    let mut child = Command::new(ffmpeg_path)
-        .args(&args)
-        .stdout(Stdio::piped())
-        .stderr(Stdio::piped())
-        .spawn()
-        .map_err(|error| AppError::FfmpegStart(error.to_string()))?;
-
-    pipe_process_output(&request.id, &mut child);
-
+    let child = spawn_ffmpeg_child(&request.id, &args).await?;
     state.processes.lock().insert(request.id, child);
     Ok(())
 }
@@ -74,15 +65,7 @@ pub async fn start_srt_relay(
         args.len()
     ));
 
-    let ffmpeg_path = sidecar::resolve_sidecar("ffmpeg")?;
-    let mut child = Command::new(ffmpeg_path)
-        .args(&args)
-        .stdout(Stdio::piped())
-        .stderr(Stdio::piped())
-        .spawn()
-        .map_err(|error| AppError::FfmpegStart(error.to_string()))?;
-
-    pipe_process_output(&process_id, &mut child);
+    let child = spawn_ffmpeg_child(&process_id, &args).await?;
     state.processes.lock().insert(process_id.clone(), child);
 
     let input_url = request.remote_input_url.clone().unwrap_or_else(|| {
@@ -132,15 +115,7 @@ pub async fn start_obs_ingest_forward(
         args.len()
     ));
 
-    let ffmpeg_path = sidecar::resolve_sidecar("ffmpeg")?;
-    let mut child = Command::new(ffmpeg_path)
-        .args(&args)
-        .stdout(Stdio::piped())
-        .stderr(Stdio::piped())
-        .spawn()
-        .map_err(|error| AppError::FfmpegStart(error.to_string()))?;
-
-    pipe_process_output(&process_id, &mut child);
+    let child = spawn_ffmpeg_child(&process_id, &args).await?;
     state.processes.lock().insert(process_id.clone(), child);
 
     Ok(ObsIngestForwardSession {
@@ -187,6 +162,28 @@ fn relay_preview_path(participant_id: &str) -> AppResult<PathBuf> {
     let dir = std::env::temp_dir().join("CollabView").join("previews");
     fs::create_dir_all(&dir).map_err(|error| AppError::FfmpegStart(error.to_string()))?;
     Ok(dir.join(format!("{safe_id}.jpg")))
+}
+
+async fn spawn_ffmpeg_child(process_id: &str, args: &[String]) -> AppResult<Child> {
+    let ffmpeg_path = sidecar::resolve_sidecar("ffmpeg")?;
+    let mut child = Command::new(&ffmpeg_path)
+        .args(args)
+        .stdout(Stdio::piped())
+        .stderr(Stdio::piped())
+        .spawn()
+        .map_err(|error| AppError::FfmpegStart(format!("{}: {error}", ffmpeg_path.display())))?;
+
+    pipe_process_output(process_id, &mut child);
+    sleep(Duration::from_millis(300)).await;
+    if let Some(status) = child
+        .try_wait()
+        .map_err(|error| AppError::FfmpegStart(error.to_string()))?
+    {
+        return Err(AppError::FfmpegStart(format!(
+            "FFmpegが起動直後に終了しました: {status}"
+        )));
+    }
+    Ok(child)
 }
 
 fn pipe_process_output(id: &str, child: &mut tokio::process::Child) {

@@ -46,10 +46,10 @@ onMounted(async () => {
     await app.refreshSources();
     selectedSourceId.value = app.sources[0]?.id ?? "";
   } catch (caught) {
-    error.value =
-      caught instanceof Error
-        ? caught.message
-        : "画面収録権限がないため、共有対象を取得できませんでした。";
+    error.value = describeUnknownError(
+      caught,
+      "画面収録権限がないため、共有対象を取得できませんでした。"
+    );
   }
 });
 
@@ -93,7 +93,7 @@ async function startSending() {
     state.value = "connected";
   } catch (caught) {
     state.value = "failed";
-    error.value = caught instanceof Error ? caught.message : "送信開始に失敗しました。";
+    error.value = describeUnknownError(caught, "送信開始に失敗しました。");
   }
 }
 
@@ -121,7 +121,7 @@ async function resolveJoinCode() {
     }
     await app.save();
   } catch (caught) {
-    error.value = caught instanceof Error ? caught.message : "参加コードの解決に失敗しました。";
+    error.value = describeUnknownError(caught, "参加コードの解決に失敗しました。");
   }
 }
 
@@ -173,8 +173,14 @@ async function capturePreviewFrame() {
     });
     previewFramePath.value = frame.path;
   } catch (caught) {
-    error.value = caught instanceof Error ? caught.message : "プレビュー取得に失敗しました。";
+    error.value = describeUnknownError(caught, "プレビュー取得に失敗しました。");
   }
+}
+
+function describeUnknownError(caught: unknown, fallback: string): string {
+  if (caught instanceof Error && caught.message.trim().length > 0) return caught.message;
+  if (typeof caught === "string" && caught.trim().length > 0) return caught;
+  return fallback;
 }
 </script>
 
