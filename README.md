@@ -307,7 +307,7 @@ GitHub Releasesやブラウザからダウンロードした未署名の`.exe`�
 一時的には、ダウンロードしたファイルに対して次を一度だけ実行します。
 
 ```powershell
-$path="$env:USERPROFILE\Downloads\CollabView_0.1.3_x64-setup.exe"
+$path="$env:USERPROFILE\Downloads\CollabView_0.1.4_x64-setup.exe"
 Get-FileHash $path -Algorithm SHA256
 Unblock-File $path
 Start-Process $path
