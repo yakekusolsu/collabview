@@ -58,7 +58,7 @@ jobs:
           APPLE_CERTIFICATE: ${{ secrets.APPLE_CERTIFICATE }}
           APPLE_CERTIFICATE_PASSWORD: ${{ secrets.APPLE_CERTIFICATE_PASSWORD }}
           KEYCHAIN_PASSWORD: ${{ secrets.KEYCHAIN_PASSWORD }}
-      - run: pnpm --filter @collabview/desktop tauri build --config '{"build":{"beforeBuildCommand":""}}' --ci
+      - run: pnpm --filter @collabview/desktop tauri build --bundles app --config '{"build":{"beforeBuildCommand":""}}' --ci
         env:
           APPLE_CERTIFICATE: ${{ secrets.APPLE_CERTIFICATE }}
           APPLE_CERTIFICATE_PASSWORD: ${{ secrets.APPLE_CERTIFICATE_PASSWORD }}
@@ -69,6 +69,19 @@ jobs:
           APPLE_API_KEY: ${{ secrets.APPLE_API_KEY }}
           APPLE_API_ISSUER: ${{ secrets.APPLE_API_ISSUER }}
           APPLE_API_KEY_PATH: ${{ secrets.APPLE_API_KEY_PATH }}
+      - run: |
+          VERSION="$(node -p "require('./package.json').version")"
+          ARCH_NAME="aarch64"
+          if [[ "$(uname -m)" == "x86_64" ]]; then
+            ARCH_NAME="x64"
+          fi
+          mkdir -p target/release/bundle/dmg
+          hdiutil create \
+            -volname CollabView \
+            -srcfolder target/release/bundle/macos/CollabView.app \
+            -ov \
+            -format UDZO \
+            "target/release/bundle/dmg/CollabView_${VERSION}_${ARCH_NAME}.dmg"
       - run: scripts/build-pkg.sh
         env:
           APPLE_INSTALLER_SIGNING_IDENTITY: ${{ secrets.APPLE_INSTALLER_SIGNING_IDENTITY }}
@@ -108,7 +121,6 @@ jobs:
           COLLABVIEW_WINDOWS_FFMPEG_PATH: C:\ProgramData\chocolatey\lib\ffmpeg\tools\ffmpeg\bin\ffmpeg.exe
       - run: node node_modules/vite/bin/vite.js build
         working-directory: apps/desktop
-      - run: cargo check --workspace --target x86_64-pc-windows-msvc
       - run: pnpm --filter @collabview/desktop tauri build --config src-tauri/tauri.windows.conf.json --ci
         env:
           COLLABVIEW_TARGET_TRIPLE: x86_64-pc-windows-msvc
