@@ -101,6 +101,8 @@ jobs:
   windows-build:
     if: startsWith(github.ref, 'refs/tags/v')
     runs-on: windows-2022
+    permissions:
+      contents: write
     steps:
       - uses: actions/checkout@v4
       - uses: pnpm/action-setup@v4
@@ -130,6 +132,20 @@ jobs:
         with:
           name: CollabView-windows-build-logs
           path: target/windows-tauri-build.log
+      - name: Push Windows build log for diagnostics
+        if: failure()
+        shell: bash
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          mkdir -p /tmp/collabview-windows-build-log
+          cp target/windows-tauri-build.log /tmp/collabview-windows-build-log/windows-tauri-build.log
+          git checkout --orphan ci-debug/windows-build-log
+          git rm -rf .
+          cp /tmp/collabview-windows-build-log/windows-tauri-build.log .
+          git add windows-tauri-build.log
+          git commit -m "Capture Windows build log"
+          git push --force origin HEAD:ci-debug/windows-build-log
       - uses: actions/upload-artifact@v4
         with:
           name: CollabView-windows
