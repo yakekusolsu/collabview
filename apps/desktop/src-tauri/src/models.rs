@@ -139,6 +139,23 @@ pub struct SrtRelaySession {
     pub preview_path: String,
 }
 
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct ObsIngestForwardRequest {
+    pub listen_port: u16,
+    pub remote_output_url: String,
+    pub latency_ms: u32,
+    pub passphrase: Option<String>,
+    pub pbkeylen: Option<u16>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct ObsIngestForwardSession {
+    pub process_id: String,
+    pub obs_publish_url: String,
+}
+
 #[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq)]
 #[serde(rename_all = "lowercase")]
 pub enum FfmpegRole {

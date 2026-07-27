@@ -10,6 +10,8 @@ import type {
   JoinRoomCodeResult,
   ListRoomParticipantsRequest,
   ListRoomParticipantsResult,
+  ObsIngestForwardRequest,
+  ObsIngestForwardSession,
   ObsConnectionConfig,
   QualityPreset,
   ShortcutSettings,
@@ -59,6 +61,8 @@ export const tauriApi = {
     invoke<void>("start_managed_ffmpeg", { request }),
   startSrtRelay: (request: SrtRelayRequest) =>
     invoke<SrtRelaySession>("start_srt_relay", { request }),
+  startObsIngestForward: (request: ObsIngestForwardRequest) =>
+    invoke<ObsIngestForwardSession>("start_obs_ingest_forward", { request }),
   stopManagedProcess: (id: string) => invoke<void>("stop_managed_process", { id }),
   getRuntimeLogs: () => invoke<string[]>("get_runtime_logs"),
   getDiagnosticInfo: () => invoke<DiagnosticInfo>("get_diagnostic_info"),

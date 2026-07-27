@@ -103,6 +103,19 @@ export interface SrtRelaySession {
   previewPath: string;
 }
 
+export interface ObsIngestForwardRequest {
+  listenPort: number;
+  remoteOutputUrl: string;
+  latencyMs: number;
+  passphrase?: string;
+  pbkeylen?: 16 | 24 | 32;
+}
+
+export interface ObsIngestForwardSession {
+  processId: string;
+  obsPublishUrl: string;
+}
+
 export interface DiagnosticInfo {
   appVersion: string;
   platform: string;

@@ -16,6 +16,7 @@ v0.1.0の土台として、次を実装しています。
 - SRT URL生成、latencyミリ秒からFFmpeg/SRT向けマイクロ秒への変換
 - SRT passphrase/PBKEYLEN検証
 - 配信者側のSRT受信、OBS向けローカルSRT再出力、JPEGプレビュー更新
+- 参加者側OBS WebSocket接続と、参加者OBSからCollabViewへのSRT入力転送
 - OBSシーン自動作成、参加者単独シーン、2分割、4分割
 - Command+1〜6のグローバルショートカット
 - シグナリングサーバーによる6文字の参加コード発行と接続先解決
@@ -41,7 +42,7 @@ v0.1.0の土台として、次を実装しています。
 - macOS 12.3以降
 - Apple Silicon Macを優先
 - Intel Macはv0.2.0以降で検証予定
-- Windows 10/11 x64は`.exe`インストーラー生成に対応予定
+- Windows 10/11 x64はNSIS形式の`.exe`インストーラー生成に対応
 - Node.js 24
 - pnpm 11
 - Rust stable
@@ -50,7 +51,7 @@ v0.1.0の土台として、次を実装しています。
 
 ScreenCaptureKitはmacOS 12.3以降が必要です。Tauri自体はより古いmacOSも対象にできますが、CollabViewは画面共有要件に合わせて12.3以上を最低対応にします。
 
-Windows版のv0.1.xでは、OBS操作、SRT受信/OBS向け再出力、設定UI、ログ、同梱FFmpeg sidecarのビルド導線を優先します。参加者側のWindows画面/ウィンドウキャプチャは、ScreenCaptureKitではなくWindows Graphics CaptureまたはFFmpeg `gdigrab`/`ddagrab`を検証してから有効化します。
+Windows版のv0.1.xでは、参加者OBS入力モード、OBS操作、SRT受信/OBS向け再出力、設定UI、ログ、同梱FFmpeg sidecarのビルド導線を優先します。参加者側のWindows画面/ウィンドウキャプチャは、ScreenCaptureKitではなくWindows Graphics CaptureまたはFFmpeg `gdigrab`/`ddagrab`を検証してから有効化します。Windows参加者は、まずOBSでゲーム画面をキャプチャし、OBSのSRT出力をCollabViewへ渡す構成を使います。
 
 ## OBS Studioの設定
 
@@ -114,7 +115,7 @@ HOST=0.0.0.0 PORT=8787 pnpm --filter @collabview/signaling-server dev
 東京、愛知、大阪など別回線の参加者を接続する場合は、公開IPまたはDNS名を持つrelayサーバーを用意します。
 
 ```text
-参加者CollabView → SRT Publish → relayサーバー → SRT Pull → 配信者CollabView → OBS用ローカルSRT
+参加者OBS → 参加者CollabView → SRT Publish → relayサーバー → SRT Pull → 配信者CollabView → 配信者OBS
 ```
 
 relayサーバーでシグナリングサーバーを起動する例:
@@ -160,10 +161,45 @@ pnpm --filter @collabview/signaling-server dev
 2. 「参加者として開始」を押します。
 3. 表示名を入力します。
 4. 参加コードを入力し、「接続先を取得」を押します。
-5. 共有対象と品質を選択します。
+5. 共有方法、共有対象、品質を選択します。
 6. 「送信開始」を押します。
 
 参加コードがrelayモードの場合、参加者は配信者MacのIPへ直接接続せず、relayサーバーへSRT送信します。参加コードが使えない場合は、手動接続として配信者MacのIPアドレスとポートを直接入力できます。
+
+## 参加者OBS入力モード
+
+東京、愛知、大阪など離れた場所の参加者がそれぞれOBSを使う場合は、このモードを使います。参加者OBSでゲーム画面を作り、OBSからローカルのCollabViewへSRTで渡し、CollabViewがrelayサーバーへ転送します。
+
+```text
+参加者OBSのゲームキャプチャ
+→ OBS SRT出力
+→ 参加者PCのCollabView
+→ インターネットrelay
+→ 配信PCのCollabView
+→ 配信PCのOBSメディアソース
+→ YouTubeなどへ生配信
+```
+
+参加者側の手順:
+
+1. 参加者PCでOBS Studioを起動します。
+2. OBSのWebSocketサーバーを有効にします。
+3. CollabViewの設定画面でOBSのホスト、ポート、パスワードを保存します。
+4. 参加者モードで共有方法を「参加者OBSから受け取る」にします。
+5. 「OBS WebSocketへ接続」を押し、OBSバージョンや現在シーンが表示されることを確認します。
+6. 配信者からもらった参加コードを入力し、「接続先を取得」を押します。
+7. CollabViewに表示されるOBS向けSRT URLをコピーします。
+8. 参加者OBSの出力先をそのSRT URLに設定します。
+9. CollabViewで「OBS入力転送開始」を押します。
+10. 参加者OBS側でSRT出力を開始します。
+
+OBSへ設定するURL例:
+
+```text
+srt://127.0.0.1:15001?mode=caller&latency=250000&transtype=live
+```
+
+このモードではCollabView側で再エンコードせず、OBSから来たH.264/MPEG-TSをrelayへコピー転送します。Windows参加者は、v0.1.xではこのOBS入力モードを推奨します。
 
 ## シグナリングサーバー
 

@@ -8,10 +8,19 @@ import MetricStrip from "@/components/MetricStrip.vue";
 import { useAppStore } from "@/stores/appStore";
 import { tauriApi } from "@/services/tauri";
 import { joinRoomCode, parseSrtUrlEndpoint } from "@/services/signaling";
+import { describeObsError, ObsClient, type ObsScene } from "@/services/obsClient";
 
 const app = useAppStore();
 const selectedSourceId = ref("");
+const shareMode = ref<"screen" | "obs">("screen");
 const state = ref<"idle" | "connecting" | "connected" | "failed" | "stopped">("idle");
+const participantObsState = ref<"idle" | "connecting" | "connected" | "failed">("idle");
+const participantObsError = ref("");
+const participantObsVersion = ref("");
+const participantObsScenes = ref<ObsScene[]>([]);
+const participantObsCurrentScene = ref("");
+const obsIngestPort = ref(15001);
+const activeProcessId = ref("");
 const ffmpegArgs = ref<string[]>([]);
 const error = ref("");
 const joinCode = ref("");
@@ -25,6 +34,11 @@ const previewFrameSrc = computed(() =>
 const selectedSource = computed(() =>
   app.sources.find((source) => source.id === selectedSourceId.value)
 );
+const obsIngestUrl = computed(
+  () =>
+    `srt://127.0.0.1:${obsIngestPort.value}?mode=caller&latency=${app.selectedQuality.latencyMs * 1000}&transtype=live`
+);
+const participantObsClient = new ObsClient();
 
 onMounted(async () => {
   await app.load();
@@ -40,13 +54,31 @@ onMounted(async () => {
 });
 
 async function startSending() {
-  if (!selectedSource.value) {
+  if (!remoteOutputUrl.value) {
+    error.value = "先に参加コードからrelay接続先を取得してください。";
+    return;
+  }
+  if (shareMode.value === "screen" && !selectedSource.value) {
     error.value = "共有する画面またはウィンドウを選択してください。";
     return;
   }
   state.value = "connecting";
   error.value = "";
   try {
+    if (shareMode.value === "obs") {
+      const session = await tauriApi.startObsIngestForward({
+        listenPort: obsIngestPort.value,
+        remoteOutputUrl: remoteOutputUrl.value,
+        latencyMs: app.selectedQuality.latencyMs
+      });
+      activeProcessId.value = session.processId;
+      state.value = "connected";
+      return;
+    }
+
+    if (!selectedSource.value) {
+      throw new Error("共有する画面またはウィンドウを選択してください。");
+    }
     const request = {
       role: "sender" as const,
       sourceId: selectedSource.value.id,
@@ -57,6 +89,7 @@ async function startSending() {
     };
     ffmpegArgs.value = await tauriApi.buildFfmpegArgs(request);
     await tauriApi.startManagedFfmpeg({ id: "participant-sender", args: request });
+    activeProcessId.value = "participant-sender";
     state.value = "connected";
   } catch (caught) {
     state.value = "failed";
@@ -93,8 +126,34 @@ async function resolveJoinCode() {
 }
 
 async function stopSending() {
-  await tauriApi.stopManagedProcess("participant-sender");
+  const processId = activeProcessId.value || "participant-sender";
+  await tauriApi.stopManagedProcess(processId);
+  activeProcessId.value = "";
   state.value = "stopped";
+}
+
+async function connectParticipantObs() {
+  participantObsState.value = "connecting";
+  participantObsError.value = "";
+  try {
+    const password = await tauriApi.loadObsPassword();
+    const result = await participantObsClient.connect(
+      app.settings.obs.host,
+      app.settings.obs.port,
+      password ?? undefined
+    );
+    participantObsVersion.value = result.obsVersion;
+    participantObsScenes.value = await participantObsClient.getScenes();
+    participantObsCurrentScene.value = await participantObsClient.getCurrentProgramScene();
+    participantObsState.value = "connected";
+  } catch (caught) {
+    participantObsState.value = "failed";
+    participantObsError.value = describeObsError(caught);
+  }
+}
+
+async function copyObsIngestUrl() {
+  await globalThis.navigator.clipboard.writeText(obsIngestUrl.value);
 }
 
 async function capturePreviewFrame() {
@@ -153,14 +212,66 @@ async function capturePreviewFrame() {
         <label for="name">表示名</label>
         <input id="name" v-model="app.settings.displayName" maxlength="32" placeholder="Player 1" />
 
-        <label for="source">共有対象</label>
-        <select id="source" v-model="selectedSourceId">
+        <label for="share-mode">共有方法</label>
+        <select id="share-mode" v-model="shareMode">
+          <option value="screen">画面/ウィンドウを直接共有</option>
+          <option value="obs">参加者OBSから受け取る</option>
+        </select>
+
+        <label v-if="shareMode === 'screen'" for="source">共有対象</label>
+        <select v-if="shareMode === 'screen'" id="source" v-model="selectedSourceId">
           <option v-for="source in app.sources" :key="source.id" :value="source.id">
             {{ source.kind }} · {{ source.name }}
           </option>
         </select>
 
-        <div class="notice">
+        <section v-if="shareMode === 'obs'" class="notice">
+          <div class="row-between">
+            <strong>参加者OBS</strong>
+            <StatusBadge
+              :state="
+                participantObsState === 'connected'
+                  ? 'connected'
+                  : participantObsState === 'failed'
+                    ? 'failed'
+                    : 'idle'
+              "
+              :label="
+                participantObsState === 'connected'
+                  ? '接続済み'
+                  : participantObsState === 'failed'
+                    ? 'エラー'
+                    : '未接続'
+              "
+            />
+          </div>
+          <button class="secondary-button full" type="button" @click="connectParticipantObs">
+            OBS WebSocketへ接続
+          </button>
+          <p v-if="participantObsVersion" class="hint">OBS {{ participantObsVersion }}</p>
+          <p v-if="participantObsCurrentScene" class="hint">
+            現在のOBSシーン: {{ participantObsCurrentScene }}
+          </p>
+          <p v-if="participantObsScenes.length > 0" class="hint">
+            取得したOBSシーン数: {{ participantObsScenes.length }}
+          </p>
+          <label for="obs-ingest-port">OBSからCollabViewへ送るポート</label>
+          <input
+            id="obs-ingest-port"
+            v-model.number="obsIngestPort"
+            type="number"
+            min="1"
+            max="65535"
+          />
+          <p class="hint">OBSのSRT出力先にこのURLを設定してください。</p>
+          <div class="inline-fields">
+            <input :value="obsIngestUrl" readonly />
+            <button class="secondary-button" type="button" @click="copyObsIngestUrl">コピー</button>
+          </div>
+          <p v-if="participantObsError" class="error-text">{{ participantObsError }}</p>
+        </section>
+
+        <div v-if="shareMode === 'screen'" class="notice">
           CollabViewがゲーム画面を共有するには、macOSの画面収録権限が必要です。通知や個人情報が映らない共有対象を選んでください。
         </div>
 
@@ -197,7 +308,9 @@ async function capturePreviewFrame() {
         <button class="secondary-button full" type="button" @click="capturePreviewFrame">
           プレビューを更新
         </button>
-        <button class="primary-button full" type="button" @click="startSending">送信開始</button>
+        <button class="primary-button full" type="button" @click="startSending">
+          {{ shareMode === "obs" ? "OBS入力転送開始" : "送信開始" }}
+        </button>
         <button class="secondary-button full" type="button" @click="stopSending">送信停止</button>
         <p v-if="error" class="error-text">
           {{ error }}

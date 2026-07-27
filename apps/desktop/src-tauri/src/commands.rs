@@ -3,7 +3,8 @@ use crate::{
         AppSettings, CaptureFrameRequest, CaptureFrameResult, CaptureSource, CreateRoomCodeRequest,
         CreateRoomCodeResult, DiagnosticInfo, FfmpegArgsRequest, JoinRoomCodeRequest,
         JoinRoomCodeResult, ListRoomParticipantsRequest, ListRoomParticipantsResult,
-        ManagedProcessRequest, SrtRelayRequest, SrtRelaySession,
+        ManagedProcessRequest, ObsIngestForwardRequest, ObsIngestForwardSession, SrtRelayRequest,
+        SrtRelaySession,
     },
     services::{capture, diagnostics, ffmpeg, keychain, process, settings, signaling},
     state::AppState,
@@ -61,6 +62,16 @@ pub async fn start_srt_relay(
     request: SrtRelayRequest,
 ) -> Result<SrtRelaySession, String> {
     process::start_srt_relay(state, request)
+        .await
+        .map_err(|error| error.to_string())
+}
+
+#[tauri::command]
+pub async fn start_obs_ingest_forward(
+    state: State<'_, AppState>,
+    request: ObsIngestForwardRequest,
+) -> Result<ObsIngestForwardSession, String> {
+    process::start_obs_ingest_forward(state, request)
         .await
         .map_err(|error| error.to_string())
 }

@@ -1,6 +1,6 @@
 use crate::{
     error::{AppError, AppResult},
-    models::{FfmpegArgsRequest, FfmpegRole, SrtRelayRequest},
+    models::{FfmpegArgsRequest, FfmpegRole, ObsIngestForwardRequest, SrtRelayRequest},
 };
 use std::path::Path;
 
@@ -74,6 +74,38 @@ pub fn build_srt_relay_args(
     ])
 }
 
+pub fn build_obs_ingest_forward_args(request: &ObsIngestForwardRequest) -> AppResult<Vec<String>> {
+    validate_obs_ingest_forward_request(request)?;
+    let input_url = srt_url(
+        "127.0.0.1",
+        request.listen_port,
+        "listener",
+        request.latency_ms,
+        request.passphrase.as_deref(),
+        request.pbkeylen,
+    );
+
+    Ok(vec![
+        "-hide_banner".to_string(),
+        "-loglevel".to_string(),
+        "info".to_string(),
+        "-fflags".to_string(),
+        "nobuffer".to_string(),
+        "-flags".to_string(),
+        "low_delay".to_string(),
+        "-i".to_string(),
+        input_url,
+        "-map".to_string(),
+        "0:v:0".to_string(),
+        "-c:v".to_string(),
+        "copy".to_string(),
+        "-an".to_string(),
+        "-f".to_string(),
+        "mpegts".to_string(),
+        request.remote_output_url.clone(),
+    ])
+}
+
 fn validate_request(request: &FfmpegArgsRequest) -> AppResult<()> {
     if request.destination_port == 0 {
         return Err(AppError::InvalidFfmpegRequest(
@@ -129,6 +161,17 @@ fn validate_srt_relay_request(request: &SrtRelayRequest, preview_path: &Path) ->
             "プレビュー出力はjpgのみ対応です".to_string(),
         ));
     }
+    Ok(())
+}
+
+fn validate_obs_ingest_forward_request(request: &ObsIngestForwardRequest) -> AppResult<()> {
+    if request.listen_port == 0 {
+        return Err(AppError::InvalidFfmpegRequest(
+            "OBS入力ポート番号が範囲外です".to_string(),
+        ));
+    }
+    validate_remote_srt_url(&request.remote_output_url)?;
+    validate_srt_security(request.passphrase.as_deref(), request.pbkeylen)?;
     Ok(())
 }
 
@@ -355,5 +398,23 @@ mod tests {
         let joined = args.join(" ");
         assert!(joined.contains("srt://relay.example.com:20001?mode=caller"));
         assert!(joined.contains("srt://127.0.0.1:13001?mode=listener"));
+    }
+
+    #[test]
+    fn builds_obs_ingest_forward_to_remote_relay() {
+        let request = ObsIngestForwardRequest {
+            listen_port: 15001,
+            remote_output_url: "srt://relay.example.com:10000?mode=caller&latency=500000"
+                .to_string(),
+            latency_ms: 250,
+            passphrase: None,
+            pbkeylen: None,
+        };
+        let args = build_obs_ingest_forward_args(&request)
+            .expect("OBS ingest forward args should be valid");
+        let joined = args.join(" ");
+        assert!(joined.contains("srt://127.0.0.1:15001?mode=listener"));
+        assert!(joined.contains("srt://relay.example.com:10000?mode=caller"));
+        assert!(joined.contains("-c:v copy"));
     }
 }

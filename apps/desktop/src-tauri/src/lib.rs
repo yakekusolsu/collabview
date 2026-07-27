@@ -7,7 +7,8 @@ mod state;
 use commands::{
     build_ffmpeg_args, capture_frame, create_room_code, get_diagnostic_info, get_runtime_logs,
     join_room_code, list_capture_sources, list_room_participants, load_obs_password, load_settings,
-    save_obs_password, save_settings, start_managed_ffmpeg, start_srt_relay, stop_managed_process,
+    save_obs_password, save_settings, start_managed_ffmpeg, start_obs_ingest_forward,
+    start_srt_relay, stop_managed_process,
 };
 use state::AppState;
 
@@ -27,6 +28,7 @@ pub fn run() {
             build_ffmpeg_args,
             start_managed_ffmpeg,
             start_srt_relay,
+            start_obs_ingest_forward,
             stop_managed_process,
             get_runtime_logs,
             get_diagnostic_info,

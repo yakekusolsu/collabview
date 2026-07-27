@@ -1,6 +1,9 @@
 use crate::{
     error::{AppError, AppResult},
-    models::{ManagedProcessRequest, SrtRelayRequest, SrtRelaySession},
+    models::{
+        ManagedProcessRequest, ObsIngestForwardRequest, ObsIngestForwardSession, SrtRelayRequest,
+        SrtRelaySession,
+    },
     services::{ffmpeg, sidecar},
     state::AppState,
 };
@@ -105,6 +108,51 @@ pub async fn start_srt_relay(
             request.pbkeylen,
         ),
         preview_path: preview_path.to_string_lossy().into_owned(),
+    })
+}
+
+pub async fn start_obs_ingest_forward(
+    state: State<'_, AppState>,
+    request: ObsIngestForwardRequest,
+) -> AppResult<ObsIngestForwardSession> {
+    let process_id = "participant-obs-ingest-forward".to_string();
+    {
+        let processes = state.processes.lock();
+        if processes.contains_key(&process_id) {
+            return Err(AppError::FfmpegStart(
+                "OBS入力転送が既に起動しています".to_string(),
+            ));
+        }
+    }
+
+    let args = ffmpeg::build_obs_ingest_forward_args(&request)?;
+    state.push_log(format!(
+        "OBS入力SRT転送を開始: listen={}, args={}個",
+        request.listen_port,
+        args.len()
+    ));
+
+    let ffmpeg_path = sidecar::resolve_sidecar("ffmpeg")?;
+    let mut child = Command::new(ffmpeg_path)
+        .args(&args)
+        .stdout(Stdio::piped())
+        .stderr(Stdio::piped())
+        .spawn()
+        .map_err(|error| AppError::FfmpegStart(error.to_string()))?;
+
+    pipe_process_output(&process_id, &mut child);
+    state.processes.lock().insert(process_id.clone(), child);
+
+    Ok(ObsIngestForwardSession {
+        process_id,
+        obs_publish_url: ffmpeg::srt_url(
+            "127.0.0.1",
+            request.listen_port,
+            "caller",
+            request.latency_ms,
+            request.passphrase.as_deref(),
+            request.pbkeylen,
+        ),
     })
 }
 
