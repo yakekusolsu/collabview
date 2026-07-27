@@ -5,3 +5,4 @@ pub mod keychain;
 pub mod process;
 pub mod settings;
 pub mod sidecar;
+pub mod signaling;

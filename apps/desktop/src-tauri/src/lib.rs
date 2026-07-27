@@ -5,9 +5,9 @@ mod services;
 mod state;
 
 use commands::{
-    build_ffmpeg_args, capture_frame, get_diagnostic_info, get_runtime_logs, list_capture_sources,
-    load_obs_password, load_settings, save_obs_password, save_settings, start_managed_ffmpeg,
-    start_srt_relay, stop_managed_process,
+    build_ffmpeg_args, capture_frame, create_room_code, get_diagnostic_info, get_runtime_logs,
+    join_room_code, list_capture_sources, list_room_participants, load_obs_password, load_settings,
+    save_obs_password, save_settings, start_managed_ffmpeg, start_srt_relay, stop_managed_process,
 };
 use state::AppState;
 
@@ -29,7 +29,10 @@ pub fn run() {
             start_srt_relay,
             stop_managed_process,
             get_runtime_logs,
-            get_diagnostic_info
+            get_diagnostic_info,
+            create_room_code,
+            join_room_code,
+            list_room_participants
         ]);
 
     if let Err(error) = builder.run(tauri::generate_context!()) {

@@ -113,3 +113,59 @@ export interface DiagnosticInfo {
   quality: string;
   recentErrors: string[];
 }
+
+export interface CreateRoomCodeRequest {
+  signalingUrl: string;
+  transportMode: TransportMode;
+  hostAddress: string;
+  hostPort: number;
+}
+
+export interface CreateRoomCodeResult {
+  roomCode: string;
+  hostToken: string;
+  transportMode: TransportMode;
+  tokenExpiresAt: number;
+}
+
+export interface JoinRoomCodeRequest {
+  signalingUrl: string;
+  roomCode: string;
+  displayName: string;
+}
+
+export interface JoinRoomCodeResult {
+  participantId: string;
+  transportMode: TransportMode;
+  hostAddress: string;
+  hostPort: number;
+  participantPublishUrl?: string;
+  tokenExpiresAt: number;
+}
+
+export interface ListRoomParticipantsRequest {
+  signalingUrl: string;
+  roomCode: string;
+  hostToken: string;
+}
+
+export interface ListRoomParticipantsResult {
+  participants: RoomParticipantConnection[];
+}
+
+export interface RoomParticipantConnection {
+  participantId: string;
+  displayName: string;
+  joinedAt: number;
+  relay?: RelayEndpoint;
+}
+
+export interface RelayEndpoint {
+  participantId: string;
+  ingestPort: number;
+  egressPort: number;
+  latencyMs: number;
+  pbkeylen: 16 | 24 | 32;
+  participantPublishUrl: string;
+  broadcasterPullUrl: string;
+}

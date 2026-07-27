@@ -3,7 +3,13 @@ import type {
   CaptureSource,
   CaptureFrameRequest,
   CaptureFrameResult,
+  CreateRoomCodeRequest,
+  CreateRoomCodeResult,
   DiagnosticInfo,
+  JoinRoomCodeRequest,
+  JoinRoomCodeResult,
+  ListRoomParticipantsRequest,
+  ListRoomParticipantsResult,
   ObsConnectionConfig,
   QualityPreset,
   ShortcutSettings,
@@ -57,5 +63,11 @@ export const tauriApi = {
   getRuntimeLogs: () => invoke<string[]>("get_runtime_logs"),
   getDiagnosticInfo: () => invoke<DiagnosticInfo>("get_diagnostic_info"),
   saveObsPassword: (password: string) => invoke<void>("save_obs_password", { password }),
-  loadObsPassword: () => invoke<string | null>("load_obs_password")
+  loadObsPassword: () => invoke<string | null>("load_obs_password"),
+  createRoomCode: (request: CreateRoomCodeRequest) =>
+    invoke<CreateRoomCodeResult>("create_room_code", { request }),
+  joinRoomCode: (request: JoinRoomCodeRequest) =>
+    invoke<JoinRoomCodeResult>("join_room_code", { request }),
+  listRoomParticipants: (request: ListRoomParticipantsRequest) =>
+    invoke<ListRoomParticipantsResult>("list_room_participants", { request })
 };

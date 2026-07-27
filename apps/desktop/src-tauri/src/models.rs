@@ -199,3 +199,75 @@ pub struct DiagnosticInfo {
     pub quality: String,
     pub recent_errors: Vec<String>,
 }
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct CreateRoomCodeRequest {
+    pub signaling_url: String,
+    pub transport_mode: String,
+    pub host_address: String,
+    pub host_port: u16,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct CreateRoomCodeResult {
+    pub room_code: String,
+    pub host_token: String,
+    pub transport_mode: String,
+    pub token_expires_at: u64,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct JoinRoomCodeRequest {
+    pub signaling_url: String,
+    pub room_code: String,
+    pub display_name: String,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct JoinRoomCodeResult {
+    pub participant_id: String,
+    pub transport_mode: String,
+    pub host_address: String,
+    pub host_port: u16,
+    pub participant_publish_url: Option<String>,
+    pub token_expires_at: u64,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct ListRoomParticipantsRequest {
+    pub signaling_url: String,
+    pub room_code: String,
+    pub host_token: String,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct ListRoomParticipantsResult {
+    pub participants: Vec<RoomParticipantConnection>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct RoomParticipantConnection {
+    pub participant_id: String,
+    pub display_name: String,
+    pub joined_at: u64,
+    pub relay: Option<RelayEndpoint>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct RelayEndpoint {
+    pub participant_id: String,
+    pub ingest_port: u16,
+    pub egress_port: u16,
+    pub latency_ms: u32,
+    pub pbkeylen: u16,
+    pub participant_publish_url: String,
+    pub broadcaster_pull_url: String,
+}

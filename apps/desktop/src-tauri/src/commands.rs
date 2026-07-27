@@ -1,9 +1,11 @@
 use crate::{
     models::{
-        AppSettings, CaptureFrameRequest, CaptureFrameResult, CaptureSource, DiagnosticInfo,
-        FfmpegArgsRequest, ManagedProcessRequest, SrtRelayRequest, SrtRelaySession,
+        AppSettings, CaptureFrameRequest, CaptureFrameResult, CaptureSource, CreateRoomCodeRequest,
+        CreateRoomCodeResult, DiagnosticInfo, FfmpegArgsRequest, JoinRoomCodeRequest,
+        JoinRoomCodeResult, ListRoomParticipantsRequest, ListRoomParticipantsResult,
+        ManagedProcessRequest, SrtRelayRequest, SrtRelaySession,
     },
-    services::{capture, diagnostics, ffmpeg, keychain, process, settings},
+    services::{capture, diagnostics, ffmpeg, keychain, process, settings, signaling},
     state::AppState,
 };
 use tauri::State;
@@ -78,4 +80,29 @@ pub fn get_runtime_logs(state: State<'_, AppState>) -> Vec<String> {
 #[tauri::command]
 pub fn get_diagnostic_info(state: State<'_, AppState>) -> DiagnosticInfo {
     diagnostics::diagnostic_info(&state)
+}
+
+#[tauri::command]
+pub async fn create_room_code(
+    request: CreateRoomCodeRequest,
+) -> Result<CreateRoomCodeResult, String> {
+    signaling::create_room_code(request)
+        .await
+        .map_err(|error| error.to_string())
+}
+
+#[tauri::command]
+pub async fn join_room_code(request: JoinRoomCodeRequest) -> Result<JoinRoomCodeResult, String> {
+    signaling::join_room_code(request)
+        .await
+        .map_err(|error| error.to_string())
+}
+
+#[tauri::command]
+pub async fn list_room_participants(
+    request: ListRoomParticipantsRequest,
+) -> Result<ListRoomParticipantsResult, String> {
+    signaling::list_room_participants(request)
+        .await
+        .map_err(|error| error.to_string())
 }

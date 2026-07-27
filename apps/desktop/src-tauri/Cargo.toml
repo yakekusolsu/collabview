@@ -17,6 +17,7 @@ tauri-build = { version = "2.3.0", features = [] }
 directories = "6.0.0"
 keyring = "3.6.2"
 parking_lot = "0.12.3"
+reqwest = { version = "0.12.24", default-features = false, features = ["json", "rustls-tls"] }
 serde = { version = "1.0.219", features = ["derive"] }
 serde_json = "1.0.140"
 tauri = { version = "2.6.2", features = [] }

@@ -26,6 +26,8 @@ pub enum AppError {
     CaptureFrame(String),
     #[error("プロセスが見つかりません: {0}")]
     ProcessNotFound(String),
+    #[error("シグナリングサーバーへ接続できませんでした: {0}")]
+    Signaling(String),
 }
 
 pub type AppResult<T> = Result<T, AppError>;
