@@ -38,12 +38,10 @@ if [[ ! -f "$ARCHIVE" ]]; then
   curl -L --fail --output "$ARCHIVE" "https://ffmpeg.org/releases/ffmpeg-$FFMPEG_VERSION.tar.xz"
 fi
 
-if [[ ! -d "$SRC_DIR" ]]; then
-  tar -C "$BUILD_DIR" -xf "$ARCHIVE"
-fi
+rm -rf "$SRC_DIR"
+tar -C "$BUILD_DIR" -xf "$ARCHIVE"
 
 pushd "$SRC_DIR" >/dev/null
-make distclean >/dev/null 2>&1 || true
 
 export PKG_CONFIG_PATH="/opt/homebrew/opt/srt/lib/pkgconfig:/opt/homebrew/opt/openssl@3/lib/pkgconfig:${PKG_CONFIG_PATH:-}"
 
@@ -110,16 +108,18 @@ copy_runtime_lib /opt/homebrew/opt/openssl@3/lib/libcrypto.3.dylib
 
 rewrite_homebrew_refs() {
   local file="$1"
-  otool -L "$file" \
-    | awk 'NR > 1 { print $1 }' \
-    | grep -E '^/opt/homebrew/' \
-    | while IFS= read -r dep; do
+  while IFS= read -r dep; do
       local base
       base="$(basename "$dep")"
       if [[ -f "$LIB_DIR/$base" ]]; then
         install_name_tool -change "$dep" "$INSTALL_PREFIX/$base" "$file" || true
       fi
-    done
+  done < <(
+    otool -L "$file" \
+      | awk 'NR > 1 { print $1 }' \
+      | grep -E '^/opt/homebrew/' \
+      || true
+  )
 }
 
 rewrite_homebrew_refs "$DEST"
