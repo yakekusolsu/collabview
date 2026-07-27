@@ -69,6 +69,10 @@ jobs:
           name: CollabView-macos-build-logs
           path: target/macos-tauri-build.log
       - run: |
+          xattr -cr target/release/bundle/macos/CollabView.app
+          codesign --force --deep --sign - --timestamp=none target/release/bundle/macos/CollabView.app
+          codesign --verify --deep --strict --verbose=4 target/release/bundle/macos/CollabView.app
+      - run: |
           VERSION="$(node -p "require('./package.json').version")"
           ARCH_NAME="aarch64"
           if [[ "$(uname -m)" == "x86_64" ]]; then
