@@ -300,6 +300,26 @@ pnpm tauri:build:windows
 
 生成物は`target/release/bundle/nsis/`に出力されます。FFmpegをChocolatey以外で用意する場合は、`COLLABVIEW_WINDOWS_FFMPEG_PATH`に`ffmpeg.exe`の絶対パスを指定してください。
 
+### Windowsで`.exe`がブロックされる場合
+
+GitHub Releasesやブラウザからダウンロードした未署名の`.exe`には、Windowsがインターネット由来の印を付けます。未署名ビルドではSmartScreenやDefenderにより「指定されたデバイス、パス、またはファイルにアクセスできません」と表示されることがあります。これはCollabViewの設定ではなく、配布ファイルのコード署名とWindows側の保護機能の問題です。
+
+一時的には、ダウンロードしたファイルに対して次を一度だけ実行します。
+
+```powershell
+$path="$env:USERPROFILE\Downloads\CollabView_0.1.3_x64-setup.exe"
+Get-FileHash $path -Algorithm SHA256
+Unblock-File $path
+Start-Process $path
+```
+
+正式配布ではWindowsコード署名証明書でAuthenticode署名した`.exe`を配布します。GitHub Actionsは次のSecretsが設定されている場合、自動でNSISインストーラーへ署名します。
+
+- `WINDOWS_CODESIGN_CERTIFICATE`: PFX証明書をBase64化した文字列
+- `WINDOWS_CODESIGN_CERTIFICATE_PASSWORD`: PFX証明書のパスワード
+
+証明書が未設定の場合、リリースは未署名のまま作成されます。未署名リリースは検証用として扱い、DefenderやSmartScreenを無効化する手順は推奨しません。ReleaseにはSHA256チェックサムも添付します。
+
 PKG作成:
 
 ```bash
