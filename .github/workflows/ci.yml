@@ -43,9 +43,14 @@ jobs:
           cache: pnpm
           cache-dependency-path: pnpm-lock.yaml
       - uses: dtolnay/rust-toolchain@stable
-      - run: brew install pkg-config srt openssl@3
+      - run: brew install pkg-config srt openssl@3 ffmpeg
       - run: pnpm install --frozen-lockfile
-      - run: pnpm -w prepare:sidecars
+      - run: swift build --package-path apps/capture-helper -c release -Xswiftc -parse-as-library
+      - run: |
+          mkdir -p apps/desktop/src-tauri/binaries
+          cp apps/capture-helper/.build/release/collabview-capture-helper \
+            apps/desktop/src-tauri/binaries/collabview-capture-helper-aarch64-apple-darwin
+      - run: scripts/bundle-ffmpeg-from-homebrew.sh /opt/homebrew/bin/ffmpeg
       - run: node node_modules/vite/bin/vite.js build
         working-directory: apps/desktop
       - run: scripts/import-apple-certificate.sh
@@ -103,7 +108,8 @@ jobs:
           COLLABVIEW_WINDOWS_FFMPEG_PATH: C:\ProgramData\chocolatey\lib\ffmpeg\tools\ffmpeg\bin\ffmpeg.exe
       - run: node node_modules/vite/bin/vite.js build
         working-directory: apps/desktop
-      - run: pnpm --filter @collabview/desktop tauri build --config src-tauri/tauri.windows.conf.json --config '{"build":{"beforeBuildCommand":""}}' --ci
+      - run: cargo check --workspace --target x86_64-pc-windows-msvc
+      - run: pnpm --filter @collabview/desktop tauri build --config src-tauri/tauri.windows.conf.json --ci
         env:
           COLLABVIEW_TARGET_TRIPLE: x86_64-pc-windows-msvc
       - uses: actions/upload-artifact@v4
