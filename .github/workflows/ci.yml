@@ -58,7 +58,11 @@ jobs:
           APPLE_CERTIFICATE: ${{ secrets.APPLE_CERTIFICATE }}
           APPLE_CERTIFICATE_PASSWORD: ${{ secrets.APPLE_CERTIFICATE_PASSWORD }}
           KEYCHAIN_PASSWORD: ${{ secrets.KEYCHAIN_PASSWORD }}
-      - run: pnpm --filter @collabview/desktop tauri build --bundles app --config '{"build":{"beforeBuildCommand":""}}' --ci
+      - run: |
+          mkdir -p target
+          set +e
+          pnpm --filter @collabview/desktop tauri build --bundles app --config '{"build":{"beforeBuildCommand":""}}' --ci 2>&1 | tee target/macos-tauri-build.log
+          exit ${PIPESTATUS[0]}
         env:
           APPLE_CERTIFICATE: ${{ secrets.APPLE_CERTIFICATE }}
           APPLE_CERTIFICATE_PASSWORD: ${{ secrets.APPLE_CERTIFICATE_PASSWORD }}
@@ -69,6 +73,11 @@ jobs:
           APPLE_API_KEY: ${{ secrets.APPLE_API_KEY }}
           APPLE_API_ISSUER: ${{ secrets.APPLE_API_ISSUER }}
           APPLE_API_KEY_PATH: ${{ secrets.APPLE_API_KEY_PATH }}
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: CollabView-macos-build-logs
+          path: target/macos-tauri-build.log
       - run: |
           VERSION="$(node -p "require('./package.json').version")"
           ARCH_NAME="aarch64"
@@ -121,9 +130,18 @@ jobs:
           COLLABVIEW_WINDOWS_FFMPEG_PATH: C:\ProgramData\chocolatey\lib\ffmpeg\tools\ffmpeg\bin\ffmpeg.exe
       - run: node node_modules/vite/bin/vite.js build
         working-directory: apps/desktop
-      - run: pnpm --filter @collabview/desktop tauri build --config src-tauri/tauri.windows.conf.json --ci
+      - shell: pwsh
+        run: |
+          New-Item -ItemType Directory -Force target | Out-Null
+          pnpm --filter @collabview/desktop tauri build --config src-tauri/tauri.windows.conf.json --ci 2>&1 | Tee-Object -FilePath target/windows-tauri-build.log
+          exit $LASTEXITCODE
         env:
           COLLABVIEW_TARGET_TRIPLE: x86_64-pc-windows-msvc
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: CollabView-windows-build-logs
+          path: target/windows-tauri-build.log
       - uses: actions/upload-artifact@v4
         with:
           name: CollabView-windows
