@@ -45,6 +45,11 @@ async function save() {
 
       <div class="form-panel">
         <h2>参加コード</h2>
+        <label for="transport-mode">接続方式</label>
+        <select id="transport-mode" v-model="app.settings.transportMode">
+          <option value="lan">同一LAN</option>
+          <option value="relay">インターネットrelay</option>
+        </select>
         <label for="signaling-url">シグナリングサーバーURL</label>
         <input
           id="signaling-url"
@@ -62,6 +67,10 @@ async function save() {
           max="65535"
         />
         <p class="hint">参加コードには、選択中の参加者用SRTポートとこのLANアドレスを登録します。</p>
+        <p class="hint">
+          インターネットrelayでは、シグナリングサーバー側の
+          COLLABVIEW_RELAY_PUBLIC_HOST設定を使って中継URLを発行します。
+        </p>
       </div>
 
       <div class="form-panel">

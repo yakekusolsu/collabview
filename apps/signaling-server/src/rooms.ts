@@ -1,6 +1,7 @@
 import { customAlphabet } from "nanoid";
 import { z } from "zod";
 import { DISPLAY_NAME_MAX_LENGTH } from "@collabview/protocol";
+import { publicRelayAllocation, type RelayAllocation, type RelayManager } from "./relay";
 
 const roomCode = customAlphabet("ABCDEFGHJKLMNPQRSTUVWXYZ23456789", 6);
 const token = customAlphabet("abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789", 32);
@@ -13,8 +14,9 @@ export const joinRoomSchema = z.object({
 });
 
 export const createRoomSchema = z.object({
+  transportMode: z.enum(["lan", "relay"]).default("lan"),
   hostAddress: z.string().trim().min(1).max(255).optional(),
-  hostPort: z.number().int().min(1).max(65535)
+  hostPort: z.number().int().min(1).max(65535).optional()
 });
 
 export interface HostEndpoint {
@@ -22,17 +24,21 @@ export interface HostEndpoint {
   hostPort: number;
 }
 
+export type TransportMode = "lan" | "relay";
+
 export interface RoomParticipant {
   id: string;
   displayName: string;
   token: string;
   joinedAt: number;
+  relayAllocation?: RelayAllocation;
 }
 
 export interface Room {
   code: string;
   hostToken: string;
-  hostEndpoint: HostEndpoint;
+  transportMode: TransportMode;
+  hostEndpoint?: HostEndpoint;
   expiresAt: number;
   participants: Map<string, RoomParticipant>;
 }
@@ -41,9 +47,17 @@ export class RoomRegistry {
   private readonly rooms = new Map<string, Room>();
   private readonly attempts = new Map<string, number[]>();
 
+  constructor(private readonly relayManager?: RelayManager) {}
+
   createRoom(input: unknown, remoteAddress: string, now = Date.now()): Room {
     this.cleanup(now);
     const parsed = createRoomSchema.parse(input);
+    if (parsed.transportMode === "lan" && !parsed.hostPort) {
+      throw new Error("host_port_required");
+    }
+    if (parsed.transportMode === "relay" && !this.relayManager) {
+      throw new Error("relay_unavailable");
+    }
     let code = roomCode();
     while (this.rooms.has(code)) {
       code = roomCode();
@@ -51,10 +65,14 @@ export class RoomRegistry {
     const room: Room = {
       code,
       hostToken: token(),
-      hostEndpoint: {
-        hostAddress: parsed.hostAddress ?? normalizeRemoteAddress(remoteAddress),
-        hostPort: parsed.hostPort
-      },
+      transportMode: parsed.transportMode,
+      hostEndpoint:
+        parsed.transportMode === "lan"
+          ? {
+              hostAddress: parsed.hostAddress ?? normalizeRemoteAddress(remoteAddress),
+              hostPort: parsed.hostPort as number
+            }
+          : undefined,
       expiresAt: now + ROOM_TTL_MS,
       participants: new Map()
     };
@@ -81,6 +99,10 @@ export class RoomRegistry {
       token: token(),
       joinedAt: now
     };
+    if (room.transportMode === "relay") {
+      participant.relayAllocation = this.relayManager?.allocate(participant.id);
+      if (!participant.relayAllocation) throw new Error("relay_unavailable");
+    }
     room.participants.set(participant.id, participant);
     return participant;
   }
@@ -89,7 +111,17 @@ export class RoomRegistry {
     this.cleanup(now);
     const room = this.rooms.get(roomCode);
     if (!room) throw new Error("room_not_found");
+    if (!room.hostEndpoint) throw new Error("room_has_no_lan_endpoint");
     return room.hostEndpoint;
+  }
+
+  listParticipants(input: unknown, now = Date.now()): ReturnType<typeof publicParticipant>[] {
+    this.cleanup(now);
+    const parsed = listParticipantsSchema.parse(input);
+    const room = this.rooms.get(parsed.roomCode);
+    if (!room) throw new Error("room_not_found");
+    if (room.hostToken !== parsed.hostToken) throw new Error("invalid_host_token");
+    return [...room.participants.values()].map(publicParticipant);
   }
 
   cleanup(now = Date.now()): void {
@@ -108,6 +140,22 @@ export class RoomRegistry {
     attempts.push(now);
     this.attempts.set(remoteAddress, attempts);
   }
+}
+
+export const listParticipantsSchema = z.object({
+  roomCode: z.string().regex(/^[A-Z2-9]{6}$/),
+  hostToken: z.string().min(16).max(128)
+});
+
+function publicParticipant(participant: RoomParticipant) {
+  return {
+    participantId: participant.id,
+    displayName: participant.displayName,
+    joinedAt: participant.joinedAt,
+    relay: participant.relayAllocation
+      ? publicRelayAllocation(participant.relayAllocation)
+      : undefined
+  };
 }
 
 function normalizeRemoteAddress(remoteAddress: string): string {

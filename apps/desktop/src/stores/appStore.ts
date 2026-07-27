@@ -16,6 +16,7 @@ const defaultSettings: AppSettings = {
   hostAddress: "127.0.0.1",
   hostPort: 12000,
   signalingUrl: "http://127.0.0.1:8787",
+  transportMode: "lan",
   autoQuality: true,
   audioMode: "none",
   shortcuts: {

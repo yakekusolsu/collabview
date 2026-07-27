@@ -1,5 +1,7 @@
 export type AppMode = "broadcaster" | "participant";
 
+export type TransportMode = "lan" | "relay";
+
 export type ConnectionState =
   "idle" | "connecting" | "connected" | "reconnecting" | "degraded" | "failed" | "stopped";
 
@@ -21,6 +23,7 @@ export interface ParticipantSummary {
   displayName: string;
   state: ConnectionState;
   srtUrl: string;
+  remoteInputUrl?: string;
   obsUrl?: string;
   previewPath?: string;
   relayProcessId?: string;
@@ -87,6 +90,7 @@ export interface SrtRelayRequest {
   participantId: string;
   listenPort: number;
   outputPort: number;
+  remoteInputUrl?: string;
   latencyMs: number;
   passphrase?: string;
   pbkeylen?: 16 | 24 | 32;

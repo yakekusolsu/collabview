@@ -20,6 +20,8 @@ pub struct AppSettings {
     pub host_port: u16,
     #[serde(default = "default_signaling_url")]
     pub signaling_url: String,
+    #[serde(default = "default_transport_mode")]
+    pub transport_mode: String,
     pub auto_quality: bool,
     pub audio_mode: String,
     #[serde(default = "ShortcutSettings::default")]
@@ -41,6 +43,7 @@ impl Default for AppSettings {
             host_address: "127.0.0.1".to_string(),
             host_port: 12000,
             signaling_url: default_signaling_url(),
+            transport_mode: default_transport_mode(),
             auto_quality: true,
             audio_mode: "none".to_string(),
             shortcuts: ShortcutSettings::default(),
@@ -50,6 +53,10 @@ impl Default for AppSettings {
 
 fn default_signaling_url() -> String {
     "http://127.0.0.1:8787".to_string()
+}
+
+fn default_transport_mode() -> String {
+    "lan".to_string()
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -98,6 +105,7 @@ pub struct FfmpegArgsRequest {
     pub source_id: Option<String>,
     pub destination_host: Option<String>,
     pub destination_port: u16,
+    pub remote_output_url: Option<String>,
     pub quality: QualityPreset,
     pub passphrase: Option<String>,
     pub pbkeylen: Option<u16>,
@@ -116,6 +124,7 @@ pub struct SrtRelayRequest {
     pub participant_id: String,
     pub listen_port: u16,
     pub output_port: u16,
+    pub remote_input_url: Option<String>,
     pub latency_ms: u32,
     pub passphrase: Option<String>,
     pub pbkeylen: Option<u16>,

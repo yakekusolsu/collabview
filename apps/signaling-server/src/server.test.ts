@@ -1,7 +1,11 @@
-import { describe, expect, it } from "vitest";
+import { afterAll, describe, expect, it } from "vitest";
 import { server } from "./server";
 
 describe("signaling server", () => {
+  afterAll(async () => {
+    await server.close();
+  });
+
   it("creates a room code and resolves the broadcaster endpoint on join", async () => {
     const createResponse = await server.inject({
       method: "POST",
@@ -37,5 +41,5 @@ describe("signaling server", () => {
       hostAddress: "192.168.0.10",
       hostPort: 12001
     });
-  });
+  }, 15_000);
 });

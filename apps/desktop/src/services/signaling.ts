@@ -1,11 +1,14 @@
 export interface CreateRoomCodeRequest {
   signalingUrl: string;
+  transportMode: "lan" | "relay";
   hostAddress: string;
   hostPort: number;
 }
 
 export interface CreateRoomCodeResult {
   roomCode: string;
+  hostToken: string;
+  transportMode: "lan" | "relay";
   tokenExpiresAt: number;
 }
 
@@ -17,9 +20,32 @@ export interface JoinRoomCodeRequest {
 
 export interface JoinRoomCodeResult {
   participantId: string;
+  transportMode: "lan" | "relay";
   hostAddress: string;
   hostPort: number;
+  participantPublishUrl?: string;
   tokenExpiresAt: number;
+}
+
+export interface RelayEndpoint {
+  participantId: string;
+  ingestPort: number;
+  egressPort: number;
+  latencyMs: number;
+  pbkeylen: 16 | 24 | 32;
+  participantPublishUrl: string;
+  broadcasterPullUrl: string;
+}
+
+export interface RoomParticipantConnection {
+  participantId: string;
+  displayName: string;
+  joinedAt: number;
+  relay?: RelayEndpoint;
+}
+
+export interface ListRoomParticipantsResult {
+  participants: RoomParticipantConnection[];
 }
 
 export async function createRoomCode(
@@ -29,6 +55,7 @@ export async function createRoomCode(
     method: "POST",
     headers: { "content-type": "application/json" },
     body: JSON.stringify({
+      transportMode: request.transportMode,
       hostAddress: request.hostAddress.trim(),
       hostPort: request.hostPort
     })
@@ -46,6 +73,30 @@ export async function joinRoomCode(request: JoinRoomCodeRequest): Promise<JoinRo
     })
   });
   return readJson<JoinRoomCodeResult>(response, "参加コードから接続先を取得できませんでした。");
+}
+
+export async function listRoomParticipants(
+  signalingUrl: string,
+  roomCode: string,
+  hostToken: string
+): Promise<ListRoomParticipantsResult> {
+  const url = new URL(`${normalizeSignalingUrl(signalingUrl)}/rooms/${roomCode}/participants`);
+  url.searchParams.set("hostToken", hostToken);
+  const response = await fetch(url);
+  return readJson<ListRoomParticipantsResult>(response, "参加者一覧を取得できませんでした。");
+}
+
+export function parseSrtUrlEndpoint(url: string): { host: string; port: number } {
+  const parsed = new URL(url);
+  if (parsed.protocol !== "srt:") throw new Error("SRT URLではありません。");
+  const port = Number(parsed.port);
+  if (!parsed.hostname || !Number.isInteger(port) || port < 1 || port > 65535) {
+    throw new Error("SRT URLの接続先が無効です。");
+  }
+  return {
+    host: parsed.hostname,
+    port
+  };
 }
 
 function normalizeSignalingUrl(url: string): string {

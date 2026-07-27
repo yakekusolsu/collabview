@@ -7,7 +7,7 @@ import MetricStrip from "@/components/MetricStrip.vue";
 import { tauriApi } from "@/services/tauri";
 import { useAppStore } from "@/stores/appStore";
 import { useObsStore } from "@/stores/obsStore";
-import { createRoomCode } from "@/services/signaling";
+import { createRoomCode, listRoomParticipants } from "@/services/signaling";
 import {
   registerCollabViewShortcuts,
   type ShortcutAction,
@@ -17,6 +17,7 @@ import {
 const app = useAppStore();
 const obs = useObsStore();
 const roomCode = ref("");
+const hostToken = ref("");
 const selectedScene = ref("");
 const relayError = ref("");
 const setupMessage = ref("");
@@ -102,6 +103,7 @@ async function startRelay() {
       participantId: participant.value.id,
       listenPort: participant.value.port,
       outputPort,
+      remoteInputUrl: participant.value.remoteInputUrl,
       latencyMs: 250
     });
     participant.value.srtUrl = session.inputUrl;
@@ -128,15 +130,73 @@ async function createJoinCode() {
   try {
     const result = await createRoomCode({
       signalingUrl: app.settings.signalingUrl,
+      transportMode: app.settings.transportMode,
       hostAddress: app.settings.hostAddress,
       hostPort: target.port
     });
     roomCode.value = result.roomCode;
+    hostToken.value = result.hostToken;
     roomCodeMessage.value = "参加者にはこのコードとシグナリングURLを伝えてください。";
     await app.save();
   } catch (error) {
     roomCodeError.value =
       error instanceof Error ? error.message : "参加コードの発行に失敗しました。";
+  }
+}
+
+async function syncRelayParticipants() {
+  if (!roomCode.value || !hostToken.value) {
+    roomCodeError.value = "先に参加コードを発行してください。";
+    return;
+  }
+  roomCodeError.value = "";
+  try {
+    const result = await listRoomParticipants(
+      app.settings.signalingUrl,
+      roomCode.value,
+      hostToken.value
+    );
+    const syncedIds: string[] = [];
+    for (const [index, item] of result.participants.entries()) {
+      if (!item.relay) continue;
+      syncedIds.push(item.participantId);
+      const existing = app.participants.find(
+        (participant) => participant.id === item.participantId
+      );
+      const outputPort = 13001 + index;
+      if (existing) {
+        existing.displayName = item.displayName;
+        existing.srtUrl = item.relay.broadcasterPullUrl;
+        existing.remoteInputUrl = item.relay.broadcasterPullUrl;
+        existing.port = item.relay.egressPort;
+        existing.outputPort = existing.outputPort ?? outputPort;
+      } else {
+        app.participants.push({
+          id: item.participantId,
+          displayName: item.displayName,
+          state: "idle",
+          srtUrl: item.relay.broadcasterPullUrl,
+          remoteInputUrl: item.relay.broadcasterPullUrl,
+          port: item.relay.egressPort,
+          outputPort,
+          stats: {
+            fps: 0,
+            bitrateKbps: 0,
+            latencyMs: item.relay.latencyMs,
+            packetLossPercent: 0,
+            width: 0,
+            height: 0,
+            droppedFrames: 0
+          }
+        });
+      }
+    }
+    if (syncedIds[0]) {
+      app.selectedParticipantId = syncedIds[0];
+    }
+    roomCodeMessage.value = `${result.participants.length}人の参加情報を同期しました。`;
+  } catch (error) {
+    roomCodeError.value = error instanceof Error ? error.message : "参加者同期に失敗しました。";
   }
 }
 
@@ -205,9 +265,17 @@ async function setupObsScenes() {
         <button class="secondary-button full" type="button" @click="createJoinCode">
           参加コードを発行
         </button>
+        <button
+          v-if="app.settings.transportMode === 'relay'"
+          class="secondary-button full"
+          type="button"
+          @click="syncRelayParticipants"
+        >
+          relay参加者を同期
+        </button>
         <p class="hint">
-          参加者はコードで接続先を取得できます。シグナリングURL:
-          {{ app.settings.signalingUrl }}
+          {{ app.settings.transportMode === "relay" ? "インターネットrelay" : "LAN" }} /
+          シグナリングURL: {{ app.settings.signalingUrl }}
         </p>
         <p v-if="roomCodeMessage" class="hint">{{ roomCodeMessage }}</p>
         <p v-if="roomCodeError" class="error-text">{{ roomCodeError }}</p>

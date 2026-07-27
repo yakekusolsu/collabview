@@ -7,7 +7,7 @@ import StatusBadge from "@/components/StatusBadge.vue";
 import MetricStrip from "@/components/MetricStrip.vue";
 import { useAppStore } from "@/stores/appStore";
 import { tauriApi } from "@/services/tauri";
-import { joinRoomCode } from "@/services/signaling";
+import { joinRoomCode, parseSrtUrlEndpoint } from "@/services/signaling";
 
 const app = useAppStore();
 const selectedSourceId = ref("");
@@ -16,6 +16,7 @@ const ffmpegArgs = ref<string[]>([]);
 const error = ref("");
 const joinCode = ref("");
 const joinMessage = ref("");
+const remoteOutputUrl = ref("");
 const previewFramePath = ref("");
 const previewFrameSrc = computed(() =>
   previewFramePath.value ? convertFileSrc(previewFramePath.value) : ""
@@ -51,6 +52,7 @@ async function startSending() {
       sourceId: selectedSource.value.id,
       destinationHost: app.settings.hostAddress,
       destinationPort: app.settings.hostPort,
+      remoteOutputUrl: remoteOutputUrl.value || undefined,
       quality: app.selectedQuality
     };
     ffmpegArgs.value = await tauriApi.buildFfmpegArgs(request);
@@ -71,10 +73,20 @@ async function resolveJoinCode() {
       roomCode: joinCode.value,
       displayName: app.settings.displayName || "Player"
     });
-    app.settings.hostAddress = result.hostAddress;
-    app.settings.hostPort = result.hostPort;
+    if (result.transportMode === "relay") {
+      if (!result.participantPublishUrl) throw new Error("relay送信URLが返されませんでした。");
+      const endpoint = parseSrtUrlEndpoint(result.participantPublishUrl);
+      remoteOutputUrl.value = result.participantPublishUrl;
+      app.settings.hostAddress = endpoint.host;
+      app.settings.hostPort = endpoint.port;
+      joinMessage.value = `relay接続先を取得しました: ${endpoint.host}:${endpoint.port}`;
+    } else {
+      remoteOutputUrl.value = "";
+      app.settings.hostAddress = result.hostAddress;
+      app.settings.hostPort = result.hostPort;
+      joinMessage.value = `接続先を取得しました: ${result.hostAddress}:${result.hostPort}`;
+    }
     await app.save();
-    joinMessage.value = `接続先を取得しました: ${result.hostAddress}:${result.hostPort}`;
   } catch (caught) {
     error.value = caught instanceof Error ? caught.message : "参加コードの解決に失敗しました。";
   }
@@ -128,6 +140,9 @@ async function capturePreviewFrame() {
           シグナリングURL: {{ app.settings.signalingUrl }}。設定画面で変更できます。
         </p>
         <p v-if="joinMessage" class="success-text">{{ joinMessage }}</p>
+        <p v-if="remoteOutputUrl" class="hint">
+          送信先はrelayサーバーです。配信者MacのIPへ直接接続しません。
+        </p>
 
         <label for="room">手動接続: 配信者IPまたはホスト</label>
         <input id="room" v-model="app.settings.hostAddress" placeholder="192.168.0.10" />

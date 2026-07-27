@@ -19,6 +19,7 @@ v0.1.0の土台として、次を実装しています。
 - OBSシーン自動作成、参加者単独シーン、2分割、4分割
 - Command+1〜6のグローバルショートカット
 - シグナリングサーバーによる6文字の参加コード発行と接続先解決
+- インターネットrelay用のSRT Publish/Pull URL発行
 - 同梱FFmpeg/libsrtによる720p60 SRTループバック検証スクリプト
 - 基本ログと診断情報
 - Vitest、Rust unit test、GitHub Actions
@@ -29,7 +30,8 @@ v0.1.0の土台として、次を実装しています。
 - Apple Silicon実機での連続ScreenCaptureKitフレームを使った720p60送信
 - OBS認証済み環境でのメディアソース再生確認
 - Intel Mac向けFFmpeg sidecarビルド
-- インターネット越しのNAT越え、中継サーバー、コードだけでの完全自動接続
+- relayサーバー上の長時間運用、監視、自動復旧、負荷試験
+- UDP到達性がない回線向けのWebRTC/QUICフォールバック
 - 署名、公証、Stapling
 
 未完成機能は完成済みとして表示しません。現在の参加者モードのキャプチャ対象は、FFmpeg接続テストへ進むための入口です。
@@ -105,7 +107,52 @@ HOST=0.0.0.0 PORT=8787 pnpm --filter @collabview/signaling-server dev
 - シグナリングサーバーURL: `http://<配信者MacのLAN IP>:8787`
 - 配信者LANアドレス: `<配信者MacのLAN IP>`
 
-この段階の参加コードは、参加者へSRT送信先のIPとポートを直接伝えないための仕組みです。SRT自体はLAN内または到達可能なネットワークで接続します。インターネット越しに「コードだけ」で接続するには、v0.3.0のNAT越えまたは中継サーバーが必要です。
+同一LANでは、参加コードは参加者へSRT送信先のIPとポートを直接伝えないための仕組みです。インターネット越しでは、次のrelay構成を使います。
+
+## インターネットrelay
+
+東京、愛知、大阪など別回線の参加者を接続する場合は、公開IPまたはDNS名を持つrelayサーバーを用意します。
+
+```text
+参加者CollabView → SRT Publish → relayサーバー → SRT Pull → 配信者CollabView → OBS用ローカルSRT
+```
+
+relayサーバーでシグナリングサーバーを起動する例:
+
+```bash
+COLLABVIEW_RELAY_PUBLIC_HOST=relay.example.com \
+COLLABVIEW_RELAY_INGEST_START_PORT=10000 \
+COLLABVIEW_RELAY_EGRESS_START_PORT=20000 \
+COLLABVIEW_RELAY_LATENCY_MS=500 \
+COLLABVIEW_RELAY_PBKEYLEN=16 \
+HOST=0.0.0.0 \
+PORT=8787 \
+pnpm --filter @collabview/signaling-server dev
+```
+
+サーバー側でFFmpeg中継プロセスも自動起動する場合:
+
+```bash
+COLLABVIEW_RELAY_AUTOSTART_FFMPEG=1 \
+COLLABVIEW_RELAY_FFMPEG_PATH=/usr/local/bin/ffmpeg \
+COLLABVIEW_RELAY_PUBLIC_HOST=relay.example.com \
+HOST=0.0.0.0 \
+PORT=8787 \
+pnpm --filter @collabview/signaling-server dev
+```
+
+開放が必要なポート:
+
+- TCP `8787`: シグナリングAPI
+- UDP `10000`以降: 参加者Publish用SRT
+- UDP `20000`以降: 配信者Pull用SRT
+
+配信者側の設定:
+
+- 接続方式: `インターネットrelay`
+- シグナリングサーバーURL: `http://relay.example.com:8787`
+
+配信者は参加コードを発行し、参加者が入った後に「relay参加者を同期」を押します。その後、対象参加者で「受信開始」を押すと、relayから受信してOBS向けの`127.0.0.1` SRTへ再出力します。
 
 ## 参加者モード
 
@@ -116,7 +163,7 @@ HOST=0.0.0.0 PORT=8787 pnpm --filter @collabview/signaling-server dev
 5. 共有対象と品質を選択します。
 6. 「送信開始」を押します。
 
-参加コードが使えない場合は、手動接続として配信者MacのIPアドレスとポートを直接入力できます。
+参加コードがrelayモードの場合、参加者は配信者MacのIPへ直接接続せず、relayサーバーへSRT送信します。参加コードが使えない場合は、手動接続として配信者MacのIPアドレスとポートを直接入力できます。
 
 ## シグナリングサーバー
 
@@ -300,6 +347,7 @@ pnpm notarize:mac
 - FFmpegは引数配列で起動し、`shell: true`相当は使いません。
 - ローカルWebViewは`127.0.0.1`にバインドします。
 - シグナリングサーバーは映像や音声を保存しません。
+- relayモードでも映像はディスクへ保存せず、SRTからSRTへ中継します。
 - SRT暗号化のpassphraseとPBKEYLENを検証します。
 - ルームコードには試行回数制限と期限を設けます。
 - 参加コードの有効期限は30分です。
@@ -310,6 +358,7 @@ v0.1.0:
 
 - Apple Silicon向けLAN内1参加者
 - 参加コードによるLAN接続先解決
+- relay接続情報の発行
 - OBS接続とシーン切り替え
 - FFmpeg/SRTパイプラインの実機検証
 - `.app`と`.dmg`
@@ -328,8 +377,9 @@ v0.2.0:
 
 v0.3.0:
 
-- NAT越え/中継
-- コードだけでのインターネット越し接続
+- relayサーバー運用監視
+- 複数リージョンrelay
+- UDPが塞がれた環境向けフォールバック
 - SRT暗号化のUI
 - 自動更新
 - 署名/公証

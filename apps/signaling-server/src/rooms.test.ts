@@ -1,10 +1,15 @@
 import { describe, expect, it } from "vitest";
 import { RoomRegistry } from "./rooms";
+import { RelayManager } from "./relay";
 
 describe("RoomRegistry", () => {
   it("creates joinable rooms with expiring tokens", () => {
     const registry = new RoomRegistry();
-    const room = registry.createRoom({ hostAddress: "192.168.0.10", hostPort: 12001 }, "127.0.0.1", 1000);
+    const room = registry.createRoom(
+      { hostAddress: "192.168.0.10", hostPort: 12001 },
+      "127.0.0.1",
+      1000
+    );
     const participant = registry.joinRoom(
       { roomCode: room.code, displayName: "Player 1" },
       "127.0.0.1",
@@ -16,6 +21,51 @@ describe("RoomRegistry", () => {
       hostAddress: "192.168.0.10",
       hostPort: 12001
     });
+  });
+
+  it("allocates relay endpoints for internet participants", () => {
+    const registry = new RoomRegistry(
+      new RelayManager({
+        publicHost: "relay.example.com",
+        bindHost: "0.0.0.0",
+        ingestStartPort: 10000,
+        egressStartPort: 20000,
+        maxAllocations: 4,
+        latencyMs: 500,
+        pbkeylen: 16,
+        autostartFfmpeg: false,
+        ffmpegPath: "ffmpeg"
+      })
+    );
+    const room = registry.createRoom({ transportMode: "relay" }, "127.0.0.1", 1000);
+    const participant = registry.joinRoom(
+      { roomCode: room.code, displayName: "Tokyo" },
+      "203.0.113.10",
+      1100
+    );
+    expect(participant.relayAllocation?.participantPublishUrl).toContain(
+      "srt://relay.example.com:10000"
+    );
+    expect(participant.relayAllocation?.broadcasterPullUrl).toContain(
+      "srt://relay.example.com:20000"
+    );
+    expect(
+      registry.listParticipants(
+        {
+          roomCode: room.code,
+          hostToken: room.hostToken
+        },
+        1200
+      )
+    ).toMatchObject([
+      {
+        displayName: "Tokyo",
+        relay: {
+          ingestPort: 10000,
+          egressPort: 20000
+        }
+      }
+    ]);
   });
 
   it("rate limits repeated invalid joins", () => {

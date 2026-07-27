@@ -8,7 +8,8 @@ import type {
   QualityPreset,
   ShortcutSettings,
   SrtRelayRequest,
-  SrtRelaySession
+  SrtRelaySession,
+  TransportMode
 } from "@collabview/shared-types";
 
 export interface AppSettings {
@@ -18,6 +19,7 @@ export interface AppSettings {
   hostAddress: string;
   hostPort: number;
   signalingUrl: string;
+  transportMode: TransportMode;
   autoQuality: boolean;
   audioMode: "none" | "game" | "system" | "microphone";
   shortcuts: ShortcutSettings;
@@ -28,6 +30,7 @@ export interface FfmpegArgsRequest {
   sourceId?: string;
   destinationHost?: string;
   destinationPort: number;
+  remoteOutputUrl?: string;
   quality: QualityPreset;
   passphrase?: string;
   pbkeylen?: 16 | 24 | 32;

@@ -21,14 +21,17 @@ pub fn build_srt_relay_args(
     preview_path: &Path,
 ) -> AppResult<Vec<String>> {
     validate_srt_relay_request(request, preview_path)?;
-    let input_url = srt_url(
-        "0.0.0.0",
-        request.listen_port,
-        "listener",
-        request.latency_ms,
-        request.passphrase.as_deref(),
-        request.pbkeylen,
-    );
+    let input_url = match request.remote_input_url.as_deref() {
+        Some(remote_input_url) => remote_input_url.to_string(),
+        None => srt_url(
+            "0.0.0.0",
+            request.listen_port,
+            "listener",
+            request.latency_ms,
+            request.passphrase.as_deref(),
+            request.pbkeylen,
+        ),
+    };
     let output_url = srt_url(
         "127.0.0.1",
         request.output_port,
@@ -95,6 +98,9 @@ fn validate_request(request: &FfmpegArgsRequest) -> AppResult<()> {
         ));
     }
     validate_srt_security(request.passphrase.as_deref(), request.pbkeylen)?;
+    if let Some(remote_output_url) = request.remote_output_url.as_deref() {
+        validate_remote_srt_url(remote_output_url)?;
+    }
     Ok(())
 }
 
@@ -114,10 +120,27 @@ fn validate_srt_relay_request(request: &SrtRelayRequest, preview_path: &Path) ->
             "受信用ポートとOBS出力ポートは分けてください".to_string(),
         ));
     }
+    if let Some(remote_input_url) = request.remote_input_url.as_deref() {
+        validate_remote_srt_url(remote_input_url)?;
+    }
     validate_srt_security(request.passphrase.as_deref(), request.pbkeylen)?;
     if preview_path.extension().and_then(|value| value.to_str()) != Some("jpg") {
         return Err(AppError::InvalidFfmpegRequest(
             "プレビュー出力はjpgのみ対応です".to_string(),
+        ));
+    }
+    Ok(())
+}
+
+fn validate_remote_srt_url(url: &str) -> AppResult<()> {
+    if !url.starts_with("srt://") || url.len() > 512 || url.chars().any(char::is_whitespace) {
+        return Err(AppError::InvalidFfmpegRequest(
+            "リモートSRT URLが無効です".to_string(),
+        ));
+    }
+    if url.contains("..") {
+        return Err(AppError::InvalidFfmpegRequest(
+            "リモートSRT URLに使用できない文字列があります".to_string(),
         ));
     }
     Ok(())
@@ -148,14 +171,16 @@ fn build_sender_args(request: &FfmpegArgsRequest) -> AppResult<Vec<String>> {
     let host = request.destination_host.as_deref().unwrap_or("127.0.0.1");
     let quality = &request.quality;
     let gop = quality.fps.saturating_mul(quality.keyframe_seconds);
-    let srt_url = srt_url(
-        host,
-        request.destination_port,
-        "caller",
-        quality.latency_ms,
-        request.passphrase.as_deref(),
-        request.pbkeylen,
-    );
+    let output_url = request.remote_output_url.clone().unwrap_or_else(|| {
+        srt_url(
+            host,
+            request.destination_port,
+            "caller",
+            quality.latency_ms,
+            request.passphrase.as_deref(),
+            request.pbkeylen,
+        )
+    });
 
     Ok(vec![
         "-hide_banner".to_string(),
@@ -186,7 +211,7 @@ fn build_sender_args(request: &FfmpegArgsRequest) -> AppResult<Vec<String>> {
         "-an".to_string(),
         "-f".to_string(),
         "mpegts".to_string(),
-        srt_url,
+        output_url,
     ])
 }
 
@@ -267,6 +292,7 @@ mod tests {
             source_id: Some("1:none".to_string()),
             destination_host: Some("127.0.0.1".to_string()),
             destination_port: 12000,
+            remote_output_url: None,
             quality: quality(),
             passphrase: Some("short".to_string()),
             pbkeylen: Some(16),
@@ -281,6 +307,7 @@ mod tests {
             source_id: Some("1:none".to_string()),
             destination_host: Some("127.0.0.1".to_string()),
             destination_port: 12000,
+            remote_output_url: None,
             quality: quality(),
             passphrase: None,
             pbkeylen: None,
@@ -296,6 +323,7 @@ mod tests {
             participant_id: "player-1".to_string(),
             listen_port: 12001,
             output_port: 13001,
+            remote_input_url: None,
             latency_ms: 250,
             passphrase: None,
             pbkeylen: None,
@@ -307,5 +335,25 @@ mod tests {
         assert!(joined.contains("srt://127.0.0.1:13001?mode=listener"));
         assert!(joined.contains("fps=10,scale=640:-2,format=yuvj420p"));
         assert!(!joined.contains(';'));
+    }
+
+    #[test]
+    fn builds_srt_relay_from_remote_input_url() {
+        let request = SrtRelayRequest {
+            participant_id: "player-1".to_string(),
+            listen_port: 12001,
+            output_port: 13001,
+            remote_input_url: Some(
+                "srt://relay.example.com:20001?mode=caller&latency=500000".to_string(),
+            ),
+            latency_ms: 250,
+            passphrase: None,
+            pbkeylen: None,
+        };
+        let args = build_srt_relay_args(&request, Path::new("/tmp/collabview-preview.jpg"))
+            .expect("relay args should be valid");
+        let joined = args.join(" ");
+        assert!(joined.contains("srt://relay.example.com:20001?mode=caller"));
+        assert!(joined.contains("srt://127.0.0.1:13001?mode=listener"));
     }
 }

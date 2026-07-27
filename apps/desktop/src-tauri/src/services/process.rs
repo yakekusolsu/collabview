@@ -63,9 +63,10 @@ pub async fn start_srt_relay(
     let preview_path = relay_preview_path(&request.participant_id)?;
     let args = ffmpeg::build_srt_relay_args(&request, &preview_path)?;
     state.push_log(format!(
-        "SRT受信/OBS再出力を開始: id={}, listen={}, output={}, args={}個",
+        "SRT受信/OBS再出力を開始: id={}, listen={}, remote={}, output={}, args={}個",
         request.participant_id,
         request.listen_port,
+        request.remote_input_url.is_some(),
         request.output_port,
         args.len()
     ));
@@ -81,16 +82,20 @@ pub async fn start_srt_relay(
     pipe_process_output(&process_id, &mut child);
     state.processes.lock().insert(process_id.clone(), child);
 
-    Ok(SrtRelaySession {
-        process_id,
-        input_url: ffmpeg::srt_url(
+    let input_url = request.remote_input_url.clone().unwrap_or_else(|| {
+        ffmpeg::srt_url(
             "0.0.0.0",
             request.listen_port,
             "listener",
             request.latency_ms,
             request.passphrase.as_deref(),
             request.pbkeylen,
-        ),
+        )
+    });
+
+    Ok(SrtRelaySession {
+        process_id,
+        input_url,
         obs_url: ffmpeg::srt_url(
             "127.0.0.1",
             request.output_port,
