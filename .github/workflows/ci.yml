@@ -53,13 +53,24 @@ jobs:
       - uses: dtolnay/rust-toolchain@stable
       - run: brew install pkg-config srt openssl@3 ffmpeg
       - run: pnpm install --frozen-lockfile
+      - run: mkdir -p target && : > target/macos-tauri-build.log
       - run: swift build --package-path apps/capture-helper -c release -Xswiftc -parse-as-library
       - run: |
           mkdir -p apps/desktop/src-tauri/binaries
           cp apps/capture-helper/.build/release/collabview-capture-helper \
             apps/desktop/src-tauri/binaries/collabview-capture-helper-aarch64-apple-darwin
-      - run: scripts/build-minimal-ffmpeg-sidecar.sh
-      - run: scripts/verify-ffmpeg-sidecar.sh apps/desktop/src-tauri/binaries/ffmpeg-aarch64-apple-darwin
+      - run: |
+          set -o pipefail
+          {
+            uname -a
+            rustc -vV
+            brew --prefix srt
+            brew --prefix openssl@3
+          } 2>&1 | tee -a target/macos-tauri-build.log
+          scripts/build-minimal-ffmpeg-sidecar.sh 2>&1 | tee -a target/macos-tauri-build.log
+      - run: |
+          set -o pipefail
+          scripts/verify-ffmpeg-sidecar.sh apps/desktop/src-tauri/binaries/ffmpeg-aarch64-apple-darwin 2>&1 | tee -a target/macos-tauri-build.log
       - run: node node_modules/vite/bin/vite.js build
         working-directory: apps/desktop
       - run: scripts/import-apple-certificate.sh
