@@ -23,13 +23,14 @@ jobs:
       - uses: dtolnay/rust-toolchain@stable
       - run: brew install pkg-config srt openssl@3 ffmpeg
       - run: pnpm install --frozen-lockfile
+      - run: mkdir -p target
       - run: swift build --package-path apps/capture-helper -c release -Xswiftc -parse-as-library
       - run: |
           mkdir -p apps/desktop/src-tauri/binaries
           cp apps/capture-helper/.build/release/collabview-capture-helper \
             apps/desktop/src-tauri/binaries/collabview-capture-helper-aarch64-apple-darwin
-      - run: scripts/build-minimal-ffmpeg-sidecar.sh
-      - run: scripts/verify-ffmpeg-sidecar.sh apps/desktop/src-tauri/binaries/ffmpeg-aarch64-apple-darwin
+      - run: scripts/build-minimal-ffmpeg-sidecar.sh 2>&1 | tee target/macos-tauri-build.log
+      - run: scripts/verify-ffmpeg-sidecar.sh apps/desktop/src-tauri/binaries/ffmpeg-aarch64-apple-darwin 2>&1 | tee -a target/macos-tauri-build.log
       - run: pnpm lint
       - run: pnpm typecheck
       - run: pnpm test
@@ -67,9 +68,8 @@ jobs:
           APPLE_CERTIFICATE_PASSWORD: ${{ secrets.APPLE_CERTIFICATE_PASSWORD }}
           KEYCHAIN_PASSWORD: ${{ secrets.KEYCHAIN_PASSWORD }}
       - run: |
-          mkdir -p target
           set +e
-          pnpm --filter @collabview/desktop tauri build --bundles app --config src-tauri/tauri.macos.conf.json --ci 2>&1 | tee target/macos-tauri-build.log
+          pnpm --filter @collabview/desktop tauri build --bundles app --config src-tauri/tauri.macos.conf.json --ci 2>&1 | tee -a target/macos-tauri-build.log
           exit ${PIPESTATUS[0]}
       - uses: actions/upload-artifact@v4
         if: always()

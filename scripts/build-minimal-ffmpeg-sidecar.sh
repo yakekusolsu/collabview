@@ -67,15 +67,26 @@ export PKG_CONFIG_PATH="/opt/homebrew/opt/srt/lib/pkgconfig:/opt/homebrew/opt/op
   --enable-network \
   --enable-libsrt \
   --enable-avfoundation \
-  --enable-protocol=file,pipe,libsrt,tcp,udp \
-  --enable-indev=avfoundation,lavfi \
-  --enable-muxer=mpegts,image2 \
+  --enable-protocol=file \
+  --enable-protocol=pipe \
+  --enable-protocol=libsrt \
+  --enable-protocol=tcp \
+  --enable-protocol=udp \
+  --enable-indev=avfoundation \
+  --enable-indev=lavfi \
+  --enable-muxer=mpegts \
+  --enable-muxer=image2 \
   --enable-demuxer=mpegts \
-  --enable-encoder=h264_videotoolbox,mjpeg \
-  --enable-decoder=h264,wrapped_avframe \
+  --enable-encoder=h264_videotoolbox \
+  --enable-encoder=mjpeg \
+  --enable-decoder=h264 \
+  --enable-decoder=wrapped_avframe \
   --enable-parser=h264 \
   --enable-bsf=h264_mp4toannexb \
-  --enable-filter=scale,fps,format,testsrc2 \
+  --enable-filter=scale \
+  --enable-filter=fps \
+  --enable-filter=format \
+  --enable-filter=testsrc2 \
   --enable-videotoolbox \
   --enable-audiotoolbox \
   --enable-swresample
