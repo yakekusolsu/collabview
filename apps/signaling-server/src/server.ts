@@ -85,7 +85,13 @@ function allowedOrigins(): string[] {
       .map((origin) => origin.trim())
       .filter((origin) => origin.length > 0);
   }
-  return ["tauri://localhost", "http://127.0.0.1:1420", "http://localhost:1420"];
+  return [
+    "tauri://localhost",
+    "http://tauri.localhost",
+    "https://tauri.localhost",
+    "http://127.0.0.1:1420",
+    "http://localhost:1420"
+  ];
 }
 
 function extractRoomCode(body: unknown): string {
