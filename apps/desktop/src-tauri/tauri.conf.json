@@ -35,9 +35,7 @@
       "icons/icon.png"
     ],
     "externalBin": ["binaries/collabview-capture-helper", "binaries/ffmpeg"],
-    "resources": {
-      "Resources/ffmpeg-libs-aarch64-apple-darwin": "ffmpeg-libs-aarch64-apple-darwin"
-    },
+    "resources": {},
     "category": "Video",
     "shortDescription": "Low-latency collaborative game viewpoint sharing for OBS",
     "longDescription": "CollabView receives low-latency game viewpoints from collaborators and controls OBS Studio scenes.",
