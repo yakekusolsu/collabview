@@ -66,5 +66,13 @@ for dylib in "$LIB_DIR"/*.dylib; do
   rewrite_file "$dylib"
 done
 
+xattr -cr "$DEST_FFMPEG" "$LIB_DIR" 2>/dev/null || true
+for dylib in "$LIB_DIR"/*.dylib; do
+  [[ -e "$dylib" ]] || continue
+  codesign --force --sign - --timestamp=none "$dylib"
+done
+codesign --force --sign - --timestamp=none "$DEST_FFMPEG"
+codesign --verify --verbose=2 "$DEST_FFMPEG"
+
 echo "Bundled FFmpeg sidecar: $DEST_FFMPEG"
 echo "Bundled FFmpeg dylibs: $LIB_DIR"

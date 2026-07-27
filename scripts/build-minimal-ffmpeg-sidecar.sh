@@ -97,19 +97,32 @@ copy_runtime_lib /opt/homebrew/opt/srt/lib/libsrt.1.5.dylib
 copy_runtime_lib /opt/homebrew/opt/openssl@3/lib/libssl.3.dylib
 copy_runtime_lib /opt/homebrew/opt/openssl@3/lib/libcrypto.3.dylib
 
-install_name_tool -change /opt/homebrew/opt/srt/lib/libsrt.1.5.dylib "$INSTALL_PREFIX/libsrt.1.5.dylib" "$DEST"
-install_name_tool -change /opt/homebrew/opt/openssl@3/lib/libssl.3.dylib "$INSTALL_PREFIX/libssl.3.dylib" "$DEST"
-install_name_tool -change /opt/homebrew/opt/openssl@3/lib/libcrypto.3.dylib "$INSTALL_PREFIX/libcrypto.3.dylib" "$DEST"
-install_name_tool -change /opt/homebrew/opt/openssl@3/lib/libssl.3.dylib "$INSTALL_PREFIX/libssl.3.dylib" "$LIB_DIR/libsrt.1.5.dylib" || true
-install_name_tool -change /opt/homebrew/opt/openssl@3/lib/libcrypto.3.dylib "$INSTALL_PREFIX/libcrypto.3.dylib" "$LIB_DIR/libsrt.1.5.dylib" || true
-install_name_tool -change /opt/homebrew/opt/openssl@3/lib/libcrypto.3.dylib "$INSTALL_PREFIX/libcrypto.3.dylib" "$LIB_DIR/libssl.3.dylib" || true
-install_name_tool -change /opt/homebrew/Cellar/openssl@3/3.6.3/lib/libssl.3.dylib "$INSTALL_PREFIX/libssl.3.dylib" "$LIB_DIR/libsrt.1.5.dylib" || true
-install_name_tool -change /opt/homebrew/Cellar/openssl@3/3.6.3/lib/libcrypto.3.dylib "$INSTALL_PREFIX/libcrypto.3.dylib" "$LIB_DIR/libsrt.1.5.dylib" || true
-install_name_tool -change /opt/homebrew/Cellar/openssl@3/3.6.3/lib/libcrypto.3.dylib "$INSTALL_PREFIX/libcrypto.3.dylib" "$LIB_DIR/libssl.3.dylib" || true
+rewrite_homebrew_refs() {
+  local file="$1"
+  otool -L "$file" \
+    | awk 'NR > 1 { print $1 }' \
+    | grep -E '^/opt/homebrew/' \
+    | while IFS= read -r dep; do
+      local base
+      base="$(basename "$dep")"
+      if [[ -f "$LIB_DIR/$base" ]]; then
+        install_name_tool -change "$dep" "$INSTALL_PREFIX/$base" "$file" || true
+      fi
+    done
+}
 
-codesign --force --sign - "$LIB_DIR/libcrypto.3.dylib"
-codesign --force --sign - "$LIB_DIR/libssl.3.dylib"
-codesign --force --sign - "$LIB_DIR/libsrt.1.5.dylib"
-codesign --force --sign - "$DEST"
+rewrite_homebrew_refs "$DEST"
+for dylib in "$LIB_DIR"/*.dylib; do
+  [[ -e "$dylib" ]] || continue
+  rewrite_homebrew_refs "$dylib"
+done
+
+xattr -cr "$DEST" "$LIB_DIR" 2>/dev/null || true
+codesign --force --sign - --timestamp=none "$LIB_DIR/libcrypto.3.dylib"
+codesign --force --sign - --timestamp=none "$LIB_DIR/libssl.3.dylib"
+codesign --force --sign - --timestamp=none "$LIB_DIR/libsrt.1.5.dylib"
+codesign --force --sign - --timestamp=none "$DEST"
+codesign --verify --verbose=2 "$DEST"
+"$DEST" -version >/dev/null
 
 echo "Built minimal FFmpeg sidecar at $DEST"
