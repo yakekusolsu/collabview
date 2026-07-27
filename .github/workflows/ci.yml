@@ -53,7 +53,7 @@ jobs:
       - uses: dtolnay/rust-toolchain@stable
       - run: brew install pkg-config srt openssl@3 ffmpeg
       - run: pnpm install --frozen-lockfile
-      - run: mkdir -p target && : > target/macos-tauri-build.log
+      - run: mkdir -p target && touch target/macos-tauri-build.log
       - run: swift build --package-path apps/capture-helper -c release -Xswiftc -parse-as-library
       - run: |
           mkdir -p apps/desktop/src-tauri/binaries

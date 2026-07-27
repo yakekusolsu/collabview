@@ -246,7 +246,7 @@ HOST=0.0.0.0 PORT=8787 pnpm --filter @collabview/signaling-server dev
 
 ビルドマシンには`pkg-config`、`srt`、`openssl@3`が必要です。生成されたFFmpeg本体、`libsrt`、OpenSSL dylibはアプリへ同梱されます。エンドユーザーがHomebrewを入れる必要はありません。
 
-macOSで`FFmpegが起動直後に終了しました: signal: 9 (SIGKILL)`と表示される場合、同梱FFmpeg sidecarまたは依存dylibのコード署名が壊れている可能性が高いです。v0.1.7以降では、minimal FFmpeg sidecarを`install_name_tool`で書き換えた後に再署名し、Release CI内で`codesign --verify`と`ffmpeg -version`を通してから`.dmg`へ入れます。このエラーが出る古い`.dmg`を使っている場合は、最新Releaseの`.dmg`を入れ直してください。
+macOSで`FFmpegが起動直後に終了しました: signal: 9 (SIGKILL)`と表示される場合、同梱FFmpeg sidecarまたは依存dylibのコード署名が壊れている可能性が高いです。v0.1.8以降では、minimal FFmpeg sidecarを`install_name_tool`で書き換えた後に再署名し、Release CI内で`codesign --verify`と`ffmpeg -version`を通してから`.dmg`へ入れます。このエラーが出る古い`.dmg`を使っている場合は、最新Releaseの`.dmg`を入れ直してください。
 
 確認例:
 
@@ -309,7 +309,7 @@ GitHub Releasesやブラウザからダウンロードした未署名の`.exe`�
 一時的には、ダウンロードしたファイルに対して次を一度だけ実行します。
 
 ```powershell
-$path="$env:USERPROFILE\Downloads\CollabView_0.1.7_x64-setup.exe"
+$path="$env:USERPROFILE\Downloads\CollabView_0.1.8_x64-setup.exe"
 Get-FileHash $path -Algorithm SHA256
 Unblock-File $path
 Start-Process $path
